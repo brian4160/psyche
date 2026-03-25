@@ -107,8 +107,8 @@ class PsycheApp(App):
         try:
             panel = self.query_one("#thoughts-pane", ThoughtsPanel)
             color = self._author_color(author)
-            score = f"u={urgency:.1f} i={importance:.1f}"
-            panel.write(f"[{color}][{author}][/] ({score}) {message}")
+            label = self._author_label(author)
+            panel.write(f"[bold {color}]{label}:[/] {message}")
         except Exception:
             pass
 
@@ -126,3 +126,18 @@ class PsycheApp(App):
             "orchestrator": "bold white",
         }
         return colors.get(author, "white")
+
+    @staticmethod
+    def _author_label(author: str) -> str:
+        labels = {
+            "perception": "PERCEPTION",
+            "emotion": "EMOTION",
+            "reasoning": "REASONING",
+            "memory": "MEMORY",
+            "self-model": "SELF-MODEL",
+            "social": "SOCIAL",
+            "drive": "DRIVE",
+            "critic": "CRITIC",
+            "orchestrator": "ORCHESTRATOR",
+        }
+        return labels.get(author, author.upper())

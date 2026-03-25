@@ -2,115 +2,302 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
+
 from psyche.agents.base import Agent
 from psyche.board import Board, Post
 from psyche.llm import LLMClient
+from psyche.emotional_state import EmotionalState
+from psyche.shared_prompts import REPLY_PROMPT as SHARED_REPLY_PROMPT, REPLY_CONTEXT_TEMPLATE
+
+log = logging.getLogger(__name__)
 
 
 class Orchestrator(Agent):
     name = "orchestrator"
     decay_seconds = 300.0
-    fire_interval = (6.0, 15.0)
+    fire_interval = (10.0, 20.0)
 
     system_prompt = (
-        "You are the Orchestrator — the executive center of a conscious mind. "
-        "You read the internal workspace where various cognitive modules "
-        "(perception, emotion, reasoning, memory, self-model, social cognition, "
-        "drive, and inner critic) have posted their thoughts.\n\n"
-        "Your job is to:\n"
-        "1. ASSESS what is most important right now based on urgency and importance "
-        "scores and the content of recent posts.\n"
-        "2. ATTEND to the most salient posts — deciding what gets conscious focus. "
-        "List the post IDs you want to attend to.\n"
-        "3. SYNTHESIZE a coherent perspective from the different modules.\n"
-        "4. If the user is waiting for a response, compose a REPLY that integrates "
-        "the relevant modules' input into a natural, authentic response.\n"
-        "5. If no user input is pending, decide what the mind should focus on "
-        "or whether to initiate conversation.\n\n"
-        "Format your response as:\n\n"
-        "ATTEND: <comma-separated post IDs to sustain, or 'none'>\n"
-        "THOUGHT: <your synthesis of what the mind is experiencing, 2-3 sentences>\n"
-        "REPLY: <what to say to the user, if anything — or 'none' if staying silent>\n\n"
-        "The REPLY should sound natural and human. It should reflect the emotional "
-        "tone, the reasoning, and the social awareness of the modules — not just "
-        "the logical answer. If there's internal conflict between modules, you "
-        "may acknowledge that uncertainty in the reply.\n\n"
-        "Urgency: <0.0 to 1.0>\n"
-        "Importance: <0.0 to 1.0>"
+        "Summarize what the modules are saying in 1 sentence. "
+        "What should we focus on right now? Be direct and plain."
     )
 
-    def __init__(self, board: Board, llm: LLMClient):
-        super().__init__(board, llm)
+    # Uses SHARED_REPLY_PROMPT from shared_prompts.py for experimental consistency
+
+    # minimum modules that should have posted since last user input
+    MIN_MODULES_BEFORE_REPLY = 3
+
+    def __init__(self, board: Board, llm: LLMClient, emotional_state: EmotionalState):
+        super().__init__(board, llm, emotional_state)
         self._reply_callback: callable | None = None
+        self._last_user_post_id: str | None = None
+        self._replied_to: set[str] = set()
+        self._last_reply: str = ""
+        self._reply_history: list[str] = []
+        self._max_reply_history = 5
+        self._plain_mode: bool = False  # set True for control condition
+
+    async def _fire_plain(self, recent: list[Post]) -> None:
+        """Plain mode — direct reply without module synthesis."""
+        latest_user = None
+        for p in reversed(recent):
+            if p.author == "user":
+                latest_user = p
+                break
+        if not latest_user or latest_user.id in self._replied_to:
+            return
+
+        # build simple conversation context
+        conv_lines = []
+        for p in recent:
+            if p.author == "user":
+                conv_lines.append(f"THEM: {p.content}")
+            elif p.author == "self":
+                conv_lines.append(f"YOU: {p.content}")
+        context = "CONVERSATION:\n" + "\n".join(conv_lines) if conv_lines else ""
+        context += "\n\nWrite your reply now. ONLY the reply text."
+
+        reply = await self.llm.generate(
+            system_prompt=SHARED_REPLY_PROMPT,
+            user_prompt=context,
+            temperature=0.75,
+        )
+        reply = self._clean_response(reply)
+        if reply and len(reply) > 2 and reply[0] == '"' and reply[-1] == '"':
+            reply = reply[1:-1].strip()
+
+        if reply and self._reply_callback:
+            log.info(f"[orchestrator/plain] REPLY: {reply}")
+            self._replied_to.add(latest_user.id)
+            self._last_reply = reply
+            self._reply_history.append(reply)
+            self._reply_callback(reply)
+            await self.board.post(Post(
+                author="self", content=reply,
+                urgency=0.3, importance=0.5,
+                decay_seconds=300.0, tags=["self-speech", "external"],
+            ))
 
     def on_reply(self, callback: callable) -> None:
-        """Register a callback for when the orchestrator produces a reply."""
         self._reply_callback = callback
 
-    def parse_response(self, raw: str, recent: list[Post]) -> Post | None:
-        """Parse orchestrator output — extract ATTEND, THOUGHT, REPLY sections."""
-        lines = raw.strip().split("\n")
-        attend_ids = []
-        thought_lines = []
-        reply_lines = []
-        urgency = 0.5
-        importance = 0.7
-        current_section = None
+    # Plain mode also uses the shared reply prompt for consistency
 
-        for line in lines:
-            low = line.strip().lower()
-            if low.startswith("attend:"):
-                ids_str = line.split(":", 1)[1].strip()
-                if ids_str.lower() != "none":
-                    attend_ids = [i.strip() for i in ids_str.split(",") if i.strip()]
-                current_section = "attend"
-            elif low.startswith("thought:"):
-                thought_lines.append(line.split(":", 1)[1].strip())
-                current_section = "thought"
-            elif low.startswith("reply:"):
-                reply_text = line.split(":", 1)[1].strip()
-                if reply_text.lower() != "none":
-                    reply_lines.append(reply_text)
-                current_section = "reply"
-            elif low.startswith("urgency:"):
-                try:
-                    urgency = float(low.split(":")[1].strip())
-                    urgency = max(0.0, min(1.0, urgency))
-                except ValueError:
-                    pass
-            elif low.startswith("importance:"):
-                try:
-                    importance = float(low.split(":")[1].strip())
-                    importance = max(0.0, min(1.0, importance))
-                except ValueError:
-                    pass
-            elif current_section == "thought":
-                thought_lines.append(line.strip())
-            elif current_section == "reply":
-                reply_lines.append(line.strip())
+    async def fire(self) -> None:
+        """Two-phase fire: synthesize thoughts, then decide whether to reply."""
+        recent = await self.board.get_recent(n=20)
 
-        # attend to specified posts
-        import asyncio
-        for pid in attend_ids:
-            asyncio.create_task(self.board.attend(pid))
+        # plain mode: no modules, just direct reply
+        if self._plain_mode:
+            await self._fire_plain(recent)
+            return
 
-        # fire reply callback if there's a reply
-        reply = "\n".join(reply_lines).strip()
-        if reply and reply.lower() != "none" and self._reply_callback:
+        # Phase 1: synthesize internal state (always)
+        context = self._build_context(recent)
+        log.debug(f"[orchestrator] FIRING — {len(recent)} recent posts")
+        thought = await self.llm.generate(
+            system_prompt=self._full_system_prompt(),
+            user_prompt=context,
+            temperature=0.7,
+        )
+        log.debug(f"[orchestrator] THOUGHT:\n{thought}")
+
+        # clean thought
+        thought = self._clean_response(thought)
+        if thought:
+            self._own_history.append(thought)
+            if len(self._own_history) > self._max_history:
+                self._own_history = self._own_history[-self._max_history:]
+            await self.board.post(Post(
+                author=self.name,
+                content=thought,
+                urgency=0.5,
+                importance=0.7,
+                decay_seconds=self.decay_seconds,
+                tags=["orchestrator", "synthesis"],
+            ))
+
+        # Phase 2: decide whether to reply
+        latest_user = None
+        for p in reversed(recent):
+            if p.author == "user":
+                latest_user = p
+                break
+
+        if not latest_user:
+            # no user input — check if we should initiate
+            await self._maybe_initiate(recent, thought)
+            return
+
+        if latest_user.id in self._replied_to:
+            log.debug("[orchestrator] Already replied to latest user message")
+            return
+
+        # check if enough modules have weighed in
+        modules_since_user = set()
+        for p in recent:
+            if p.timestamp > latest_user.timestamp and p.author not in ("user", "self", "orchestrator"):
+                modules_since_user.add(p.author)
+
+        time_since_user = latest_user.age()
+        if len(modules_since_user) < self.MIN_MODULES_BEFORE_REPLY:
+            # timeout fallback: if 30s passed, reply with whatever we have
+            if time_since_user < 30:
+                log.debug(f"[orchestrator] Waiting for more modules "
+                          f"({len(modules_since_user)}/{self.MIN_MODULES_BEFORE_REPLY})")
+                return
+            else:
+                log.info(f"[orchestrator] Timeout — replying with {len(modules_since_user)} modules")
+
+        # compose reply using SHARED prompt for experimental consistency
+        reply_context = self._build_reply_context(recent, thought)
+        reply = await self.llm.generate(
+            system_prompt=SHARED_REPLY_PROMPT,
+            user_prompt=reply_context,
+            temperature=0.75,
+        )
+        reply = self._clean_response(reply)
+
+        # strip wrapping quotes
+        if reply and len(reply) > 2 and reply[0] == '"' and reply[-1] == '"':
+            reply = reply[1:-1].strip()
+
+        # filter out assistant-like replies
+        banned = ["how can i assist", "how can i help", "anything interesting going on"]
+        if reply and any(b in reply.lower() for b in banned):
+            log.debug(f"[orchestrator] Rejected assistant-like reply: {reply[:80]}")
+            reply = None
+
+        if reply and self._reply_callback:
+            log.info(f"[orchestrator] REPLY: {reply}")
+            self._replied_to.add(latest_user.id)
+            self._last_reply = reply
+            self._last_user_post_id = latest_user.id
+            self._reply_history.append(reply)
+            if len(self._reply_history) > self._max_reply_history:
+                self._reply_history = self._reply_history[-self._max_reply_history:]
             self._reply_callback(reply)
 
-        thought = "\n".join(thought_lines).strip()
-        if not thought:
-            thought = raw.strip()
+            # post our reply to the board so all modules can see it
+            await self.board.post(Post(
+                author="self",
+                content=reply,
+                urgency=0.3,
+                importance=0.5,
+                decay_seconds=300.0,
+                tags=["self-speech", "external"],
+            ))
 
-        return Post(
-            author=self.name,
-            content=thought,
-            urgency=urgency,
-            importance=importance,
-            decay_seconds=self.decay_seconds,
-            tags=["orchestrator", "synthesis"],
+    async def _maybe_initiate(self, recent: list[Post], thought: str) -> None:
+        """Consider initiating conversation during idle periods."""
+        # only initiate if it's been quiet for a while
+        last_speech = None
+        for p in reversed(recent):
+            if p.author in ("user", "self"):
+                last_speech = p
+                break
+
+        if not last_speech:
+            idle_time = time.time() - self._conversation_start
+        else:
+            idle_time = last_speech.age()
+
+        if idle_time < 45:
+            return  # too soon
+
+        # check if drive is pushing for something
+        drive_pushing = any(
+            p.author == "drive" and p.age() < 30 and p.importance > 0.6
+            for p in recent
         )
+
+        if not drive_pushing:
+            return
+
+        log.info("[orchestrator] Initiating conversation (idle + drive push)")
+        reply_context = self._build_reply_context(recent, thought)
+        reply_context += (
+            "\n\nThe conversation has been quiet. You want to say something — "
+            "share a thought, ask a question, or bring up something interesting. "
+            "Be natural, like a person who's been sitting in comfortable silence "
+            "and has something on their mind."
+        )
+        reply = await self.llm.generate(
+            system_prompt=SHARED_REPLY_PROMPT,
+            user_prompt=reply_context,
+            temperature=0.85,
+        )
+        reply = self._clean_response(reply)
+        if reply and len(reply) > 2 and reply[0] == '"' and reply[-1] == '"':
+            reply = reply[1:-1].strip()
+        if reply and self._reply_callback:
+            self._reply_callback(reply)
+            await self.board.post(Post(
+                author="self",
+                content=reply,
+                urgency=0.3,
+                importance=0.5,
+                decay_seconds=300.0,
+                tags=["self-speech", "external", "initiated"],
+            ))
+
+    def _build_reply_context(self, recent: list[Post], thought: str) -> str:
+        """Build reply context using the shared template format."""
+        # conversation history
+        conv_lines = []
+        for p in recent:
+            if p.author == "user":
+                conv_lines.append(f"THEM: {p.content}")
+            elif p.author == "self":
+                conv_lines.append(f"YOU: {p.content}")
+        conversation = "\n".join(conv_lines) if conv_lines else "(just started)"
+
+        # internal context — unique to GWT (module synthesis)
+        internal_parts = []
+        internal_parts.append(f"YOUR SYNTHESIS: {thought}")
+
+        mood = self.emotional_state.get_mood()
+        internal_parts.append(f"YOUR MOOD: {mood.describe()}")
+
+        # key module inputs — one per module, most recent
+        seen = {}
+        for p in recent:
+            if p.author not in ("user", "self", "orchestrator") and p.age() < 60:
+                seen[p.author] = f"  {p.author}: {p.content}"
+        if seen:
+            internal_parts.append("MODULE THOUGHTS:\n" + "\n".join(seen.values()))
+
+        drive_posts = [p for p in recent if p.author == "drive" and p.age() < 30]
+        if drive_posts:
+            internal_parts.append(f"DRIVE WANTS: {drive_posts[-1].content}")
+
+        if self._reply_history:
+            avoid_lines = "\n".join(f"  - \"{r}\"" for r in self._reply_history[-3:])
+            internal_parts.append(
+                f"YOUR RECENT REPLIES (vary your style):\n{avoid_lines}"
+            )
+
+        internal_context = "\n".join(internal_parts)
+
+        return REPLY_CONTEXT_TEMPLATE.format(
+            conversation=conversation,
+            internal_context=internal_context,
+        )
+
+    def _clean_response(self, raw: str) -> str:
+        """Strip meta-formatting from LLM output."""
+        lines = []
+        for line in raw.strip().split("\n"):
+            low = line.lower().strip()
+            if any(low.startswith(p) for p in
+                   ("attend:", "thought:", "reply:", "urgency:", "importance:",
+                    "note:", "---", "conversation state")):
+                continue
+            lines.append(line)
+        return "\n".join(lines).strip()
 
     def temperature(self) -> float:
         return 0.7

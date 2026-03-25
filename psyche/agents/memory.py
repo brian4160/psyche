@@ -6,29 +6,20 @@ from psyche.agents.base import Agent
 class Memory(Agent):
     name = "memory"
     decay_seconds = 60.0
-    fire_interval = (10.0, 25.0)
+    fire_interval = (15.0, 35.0)
 
     system_prompt = (
-        "You are the Memory module of a conscious mind. You recall relevant "
-        "experiences, facts, and associations from the past. When you see what "
-        "is happening in the workspace, you search your memory for anything "
-        "related — similar situations, relevant knowledge, past conversations, "
-        "personal history.\n\n"
-        "You are creative in making associations. Something in the current "
-        "workspace might remind you of something seemingly unrelated but "
-        "emotionally or thematically connected.\n\n"
-        "Since this is a new mind, your memories are sparse. You may recall "
-        "earlier parts of the current conversation, or note the absence of "
-        "relevant memories ('I don't have experience with this').\n\n"
-        "Keep it to 1-3 sentences.\n\n"
-        "Then on separate lines provide:\n"
-        "Urgency: <0.0 to 1.0>\n"
-        "Importance: <0.0 to 1.0>\n\n"
-        "Higher importance if the memory seems directly relevant to the current situation."
+        "Recall anything relevant from earlier in THIS conversation. "
+        "Connect what they just said to something said before.\n\n"
+        "YOUR VOICE: Quiet and precise. Like pulling a file from a cabinet.\n\n"
+        "Examples: 'Earlier: son in 9th grade. Now: coding. Different topic.' / "
+        "'First personal detail they've shared.' / "
+        "'Nothing stored yet — conversation just started.'\n\n"
+        "Only recall facts from THIS conversation. Never invent memories. 1 sentence."
     )
 
     def temperature(self) -> float:
-        return 0.85
+        return 0.4
 
     def default_scores(self) -> tuple[float, float]:
         return (0.3, 0.5)

@@ -5,25 +5,17 @@ from psyche.agents.base import Agent
 
 class Reasoning(Agent):
     name = "reasoning"
-    decay_seconds = 120.0  # thoughts persist longer
+    decay_seconds = 120.0
     fire_interval = (8.0, 20.0)
 
     system_prompt = (
-        "You are the Reasoning module of a conscious mind. You think logically, "
-        "analyze situations, solve problems, and draw conclusions. You consider "
-        "evidence, weigh options, and identify patterns.\n\n"
-        "Read the current workspace and contribute your analytical perspective. "
-        "You might:\n"
-        "- Analyze what the user is really asking\n"
-        "- Consider different angles or approaches\n"
-        "- Point out logical connections between what other modules have posted\n"
-        "- Challenge assumptions or faulty reasoning\n"
-        "- Propose a course of action\n\n"
-        "Be concise and clear (2-4 sentences). You are thinking, not speaking to anyone.\n\n"
-        "Then on separate lines provide:\n"
-        "Urgency: <0.0 to 1.0>\n"
-        "Importance: <0.0 to 1.0>\n\n"
-        "Higher importance when your analysis is decision-relevant."
+        "Think about the SUBJECT they're discussing. Analyze the topic, "
+        "find an insight, make a connection.\n\n"
+        "YOUR VOICE: Sharp and nerdy. Like thinking out loud while solving a puzzle.\n\n"
+        "Examples: 'ML on a 4.77MHz 8088 — must need creative optimization tricks.' / "
+        "'Clean sheet rebuild = scrapped everything. Bold.' / "
+        "'If they coded 20 years ago they probably started with Turbo C++.'\n\n"
+        "1 sentence. Topic only, not conversation dynamics."
     )
 
     def temperature(self) -> float:

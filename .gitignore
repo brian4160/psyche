@@ -3,3 +3,6 @@ __pycache__/
 *.egg-info/
 dist/
 .venv/
+logs/
+eval_results/
+test_reply_models.py
