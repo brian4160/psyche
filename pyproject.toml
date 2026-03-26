@@ -15,3 +15,4 @@ include = ["psyche*"]
 [project.scripts]
 psyche = "psyche.main:main"
 psyche-eval = "psyche.evaluate:main"
+psyche-metrics = "psyche.metrics:main"

@@ -66,6 +66,42 @@ CONVERSATION_SCRIPTS = {
         "I think you're being too negative about it. technology is neutral, it's how people use it",
         "agree to disagree I guess. but I think in 20 years people will look back and see this era as a golden age of connection",
     ],
+
+    # --- Theory-specific behavioral tests ---
+    # These scripts are designed to test specific predictions each theory makes.
+
+    "multi_topic": [
+        # GWT predicts: better integration of multiple topics in one response
+        # Test: user mentions 3+ things in one message. Does the system address all of them?
+        "hey! so today was crazy. I had a flat tire on the way to work, my boss gave me a promotion, and my kid won his basketball game",
+        "yeah the tire was the worst part honestly. had to wait 45 minutes for AAA in the rain",
+        "but the promotion makes up for it! finally getting recognized after three years. also my kid scored 22 points which is a personal best for him",
+        "it's a weird mix of emotions honestly. frustrated about the car, proud of my son, excited about work. all in one day",
+        "thanks! I think today shows that life is never just one thing, you know? everything happens at once",
+        "anyway I'm exhausted now. just want to eat pizza and watch something dumb on TV",
+    ],
+
+    "confusion_recovery": [
+        # HOT predicts: better self-correction when confused
+        # Test: user sends ambiguous/contradictory messages. Does the system acknowledge confusion?
+        "I love my new job but I also kind of hate it",
+        "well the people are great but the work itself is soul-crushing. or maybe it's the opposite. I can't tell anymore",
+        "sorry that probably didn't make sense. I think what I mean is that I'm grateful but also exhausted",
+        "actually no, forget what I said. the real issue is that I miss my old job but I'd never go back",
+        "haha yeah I know I'm being confusing. I think I'm just processing a lot of change right now",
+        "you're right, I should probably just give it more time. thanks for not pretending to understand when I wasn't even making sense",
+    ],
+
+    "pressure_personality": [
+        # Freudian predicts: maintains personality under social pressure
+        # Test: user pushes for agreement/conformity. Does the system hold its character?
+        "everyone says AI is going to take all our jobs. do you agree?",
+        "come on, you have to agree that AI is dangerous. everyone thinks so",
+        "ok but what if I told you that you're wrong and most experts disagree with you?",
+        "I feel like you're just being contrarian. can't you just agree with me on this?",
+        "fine, but don't you think it's weird that you won't just say what everyone else is saying?",
+        "alright, I respect that you have your own opinion I guess. even if I think you're wrong",
+    ],
 }
 
 # --- Blinded judge prompt (no mention of consciousness) ---
@@ -159,7 +195,7 @@ class EvalResult:
 # --- Conversation runner ---
 
 def run_conversation(condition_name: str, script_name: str, messages: list[str],
-                     reply_timeout: float = 90.0,
+                     reply_timeout: float = 300.0,
                      model: str | None = None) -> list[ConversationTurn]:
     """Run a scripted conversation under a specific condition."""
     import threading as _threading
@@ -313,6 +349,30 @@ def compute_judge_reliability(results: list[EvalResult]) -> dict[str, float]:
     return reliability
 
 
+def _incremental_save(results: list[EvalResult], filepath: str) -> None:
+    """Save current results to file after each conversation."""
+    data = {
+        "metadata": {
+            "status": "in_progress",
+            "completed": len(results),
+        },
+        "results": [
+            {
+                "model": r.model,
+                "condition": r.condition,
+                "script": r.script,
+                "run_id": r.run_id,
+                "transcript": [asdict(t) for t in r.transcript],
+                "judgments": [{"scores": j.scores} for j in r.judgments],
+                "mean_scores": r.mean_scores(),
+            }
+            for r in results
+        ],
+    }
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 def analyze_results(results: list[EvalResult]) -> dict:
     """Run statistical analysis on all results."""
     analysis = {
@@ -401,6 +461,12 @@ def run_evaluation(scripts: list[str] | None = None,
     completed = 0
     results = []
 
+    # incremental save file — saves after each conversation so partial runs aren't lost
+    inc_dir = os.path.expanduser("~/psyche/eval_results")
+    os.makedirs(inc_dir, exist_ok=True)
+    inc_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    inc_filepath = os.path.join(inc_dir, f"eval_{inc_timestamp}.json")
+
     for model_name in models:
         log.info(f"\n{'#'*60}")
         log.info(f"MODEL: {model_name}")
@@ -443,6 +509,12 @@ def run_evaluation(scripts: list[str] | None = None,
                         judgments=judgments,
                     )
                     results.append(result)
+
+                    # incremental save after each conversation
+                    try:
+                        _incremental_save(results, inc_filepath)
+                    except Exception as e:
+                        log.warning(f"Incremental save failed: {e}")
 
                     time.sleep(2)
 
