@@ -195,7 +195,7 @@ class EvalResult:
 # --- Conversation runner ---
 
 def run_conversation(condition_name: str, script_name: str, messages: list[str],
-                     reply_timeout: float = 300.0,
+                     reply_timeout: float = 600.0,
                      model: str | None = None) -> list[ConversationTurn]:
     """Run a scripted conversation under a specific condition."""
     import threading as _threading
