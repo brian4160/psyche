@@ -437,7 +437,8 @@ def run_evaluation(scripts: list[str] | None = None,
                    conditions: list[str] | None = None,
                    models: list[str] | None = None,
                    runs_per_cell: int = 5,
-                   judge_repeats: int = 3) -> tuple[list[EvalResult], dict]:
+                   judge_repeats: int = 3,
+                   resume_file: str | None = None) -> tuple[list[EvalResult], dict]:
     """Run a full evaluation.
 
     Args:
@@ -446,6 +447,7 @@ def run_evaluation(scripts: list[str] | None = None,
         models: which LLM models to test (default: mistral-nemo only)
         runs_per_cell: how many times to run each condition×script pair
         judge_repeats: how many times to judge each transcript
+        resume_file: path to a previous results JSON to resume from
 
     Returns:
         (results, analysis)
@@ -457,15 +459,42 @@ def run_evaluation(scripts: list[str] | None = None,
     if models is None:
         models = ["mistral-nemo"]
 
-    total = len(models) * len(scripts) * len(conditions) * runs_per_cell
-    completed = 0
+    # load previous results if resuming
+    done_keys: set[tuple] = set()
     results = []
+    if resume_file:
+        try:
+            with open(resume_file) as f:
+                prev_data = json.load(f)
+            for r in prev_data["results"]:
+                done_keys.add((r["model"], r["condition"], r["script"], r["run_id"]))
+                results.append(EvalResult(
+                    condition=r["condition"],
+                    script=r["script"],
+                    run_id=r["run_id"],
+                    model=r.get("model", "unknown"),
+                    transcript=[ConversationTurn(**t) for t in r["transcript"]],
+                ))
+            log.info(f"Resumed {len(results)} conversations from {resume_file}")
+        except Exception as e:
+            log.error(f"Failed to load resume file: {e}")
 
-    # incremental save file — saves after each conversation so partial runs aren't lost
+    total = len(models) * len(scripts) * len(conditions) * runs_per_cell
+    completed = len(results)
+    skipped = 0
+
+    # incremental save file
     inc_dir = os.path.expanduser("~/psyche/eval_results")
     os.makedirs(inc_dir, exist_ok=True)
     inc_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     inc_filepath = os.path.join(inc_dir, f"eval_{inc_timestamp}.json")
+
+    # save the resumed data immediately
+    if results:
+        try:
+            _incremental_save(results, inc_filepath)
+        except Exception:
+            pass
 
     for model_name in models:
         log.info(f"\n{'#'*60}")
@@ -477,10 +506,18 @@ def run_evaluation(scripts: list[str] | None = None,
 
             for condition_name in conditions:
                 for run_id in range(runs_per_cell):
+                    # skip if already done (resume)
+                    key = (model_name, condition_name, script_name, run_id)
+                    if key in done_keys:
+                        skipped += 1
+                        log.debug(f"Skipping (already done): {key}")
+                        continue
+
                     completed += 1
+                    remaining = total - completed - skipped
                     log.info(f"\n{'='*60}")
                     log.info(f"[{completed}/{total}] {model_name} / {condition_name} / "
-                             f"{script_name} / run {run_id+1}")
+                             f"{script_name} / run {run_id+1} ({remaining} remaining)")
                     log.info(f"{'='*60}")
 
                     # run conversation
@@ -656,6 +693,12 @@ def main():
 
     skip_judge = "--skip-judge" in sys.argv
 
+    resume_file = None
+    if "--resume" in sys.argv:
+        idx = sys.argv.index("--resume")
+        if idx + 1 < len(sys.argv):
+            resume_file = sys.argv[idx + 1]
+
     models = None
     if "--models" in sys.argv:
         idx = sys.argv.index("--models")
@@ -684,12 +727,16 @@ def main():
     print(f"Total judge calls: {total_judgments}")
     print()
 
+    if resume_file:
+        print(f"Resuming from: {resume_file}")
+
     results, analysis = run_evaluation(
         scripts=scripts,
         conditions=conditions,
         models=models,
         runs_per_cell=runs,
         judge_repeats=0 if skip_judge else judge_repeats,
+        resume_file=resume_file,
     )
 
     filepath = save_results(results, analysis)
