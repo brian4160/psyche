@@ -491,15 +491,19 @@ def run_evaluation(scripts: list[str] | None = None,
 
     # save the resumed data immediately
     if results:
+        print(f"  Resumed {len(results)} completed conversations, skipping those.")
         try:
             _incremental_save(results, inc_filepath)
         except Exception:
             pass
 
+    start_time = time.time()
+
     for model_name in models:
-        log.info(f"\n{'#'*60}")
+        print(f"\n{'#'*60}")
+        print(f"  MODEL: {model_name}")
+        print(f"{'#'*60}")
         log.info(f"MODEL: {model_name}")
-        log.info(f"{'#'*60}")
 
         for script_name in scripts:
             messages = CONVERSATION_SCRIPTS[script_name]
@@ -510,17 +514,28 @@ def run_evaluation(scripts: list[str] | None = None,
                     key = (model_name, condition_name, script_name, run_id)
                     if key in done_keys:
                         skipped += 1
-                        log.debug(f"Skipping (already done): {key}")
                         continue
 
                     completed += 1
                     remaining = total - completed - skipped
-                    log.info(f"\n{'='*60}")
+                    elapsed = time.time() - start_time
+                    new_done = completed - len(done_keys)
+                    if new_done > 0:
+                        avg_time = elapsed / new_done
+                        eta_sec = avg_time * remaining
+                        eta_h = int(eta_sec // 3600)
+                        eta_m = int((eta_sec % 3600) // 60)
+                        eta_str = f"~{eta_h}h{eta_m:02d}m left"
+                    else:
+                        eta_str = "estimating..."
+
+                    print(f"  [{completed}/{total}] {condition_name} / {script_name} "
+                          f"/ run {run_id+1}  ({eta_str})", flush=True)
                     log.info(f"[{completed}/{total}] {model_name} / {condition_name} / "
-                             f"{script_name} / run {run_id+1} ({remaining} remaining)")
-                    log.info(f"{'='*60}")
+                             f"{script_name} / run {run_id+1}")
 
                     # run conversation
+                    conv_start = time.time()
                     try:
                         transcript = run_conversation(
                             condition_name, script_name, messages, model=model_name
@@ -528,6 +543,12 @@ def run_evaluation(scripts: list[str] | None = None,
                     except Exception as e:
                         log.error(f"Conversation failed: {e}")
                         transcript = []
+
+                    conv_elapsed = time.time() - conv_start
+                    replies = [t.content for t in transcript if t.speaker == "system"]
+                    good = sum(1 for r in replies if r != "[no response]")
+                    print(f"           done in {conv_elapsed:.0f}s — "
+                          f"{good}/{len(replies)} replies", flush=True)
 
                     # judge it (multiple times) — skip if judge_repeats=0
                     judgments = []
