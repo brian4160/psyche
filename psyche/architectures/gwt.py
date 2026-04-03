@@ -19,11 +19,23 @@ class GWTArchitecture(Architecture):
     name = "gwt"
     description = "Global Workspace Theory — multi-agent broadcast workspace"
 
-    def __init__(self, llm: LLMClient):
+    def __init__(self, llm: LLMClient, agents_override: list[str] | None = None):
         super().__init__(llm)
         # import here to avoid circular imports
         from psyche.main import Psyche
-        config = get_condition("gwt")
+        from psyche.config import TheoryConfig
+        if agents_override:
+            config = TheoryConfig(
+                name="gwt-ablation",
+                description=f"GWT with {len(agents_override)} modules",
+                agents=agents_override,
+                attention_gate=True,
+                prediction_engine=True,
+                emotional_state=True,
+                conversation_boundaries=True,
+            )
+        else:
+            config = get_condition("gwt")
         self._psyche = Psyche(config=config, ui=False)
         # share the LLM instance
         self._psyche.llm = llm

@@ -1,0 +1,67 @@
+{
+    "_comment": "All remaining eval jobs for the Psyche paper. Run with: psyche-schedule --jobs jobs_remaining.json",
+    "jobs": [
+        {
+            "_comment": "=== PRIORITY 1: Statistical power — more 12B runs ===",
+            "name": "12B additional runs (n=20→50)",
+            "model": "mistral-nemo",
+            "runs": 30,
+            "resume_file": "eval_results/eval_20260324_215637.json"
+        },
+        {
+            "_comment": "=== PRIORITY 2: 12B behavioral tests (currently missing) ===",
+            "name": "12B behavioral tests",
+            "model": "mistral-nemo",
+            "scripts": ["multi_topic", "confusion_recovery", "pressure_personality", "extended_conversation"],
+            "runs": 5
+        },
+        {
+            "_comment": "=== PRIORITY 3: 22B missing cell ===",
+            "name": "22B missing cell",
+            "model": "mistral-small",
+            "conditions": ["gwt+hot+freudian"],
+            "scripts": ["disagreement"],
+            "runs": 5,
+            "resume_file": "eval_results/eval_22b_final.json"
+        },
+        {
+            "_comment": "=== PRIORITY 4: 22B extended conversation ===",
+            "name": "22B extended conversation",
+            "model": "mistral-small",
+            "scripts": ["extended_conversation"],
+            "runs": 5
+        },
+        {
+            "_comment": "=== PRIORITY 5: GWT ablation study ===",
+            "name": "GWT ablation (12B)",
+            "model": "mistral-nemo",
+            "conditions": ["gwt-core", "gwt-nodrive", "gwt-nocritic"],
+            "scripts": ["casual_chat", "emotional_depth", "disagreement", "extended_conversation"],
+            "runs": 5
+        },
+        {
+            "_comment": "=== PRIORITY 6: Freudian prompt ablation ===",
+            "name": "Freudian bland ablation (12B)",
+            "model": "mistral-nemo",
+            "conditions": ["freudian-bland"],
+            "scripts": ["casual_chat", "emotional_depth", "disagreement", "extended_conversation"],
+            "runs": 5
+        },
+        {
+            "_comment": "=== PRIORITY 7: Cross-family validation (3090 only) ===",
+            "name": "Qwen 2.5 14B cross-family",
+            "model": "qwen2.5:14b",
+            "conditions": ["plain", "freudian", "gwt", "hot"],
+            "scripts": ["casual_chat", "emotional_depth", "disagreement"],
+            "runs": 5
+        },
+        {
+            "_comment": "=== PRIORITY 8: 22B Q8 quantization control (3090 only) ===",
+            "name": "22B Q8 quantization check",
+            "model": "mistral-small:q8_0",
+            "conditions": ["plain", "freudian", "gwt"],
+            "scripts": ["casual_chat", "emotional_depth"],
+            "runs": 5
+        }
+    ]
+}

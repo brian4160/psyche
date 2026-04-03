@@ -16,3 +16,4 @@ include = ["psyche*"]
 psyche = "psyche.main:main"
 psyche-eval = "psyche.evaluate:main"
 psyche-metrics = "psyche.metrics:main"
+psyche-schedule = "psyche.scheduler:main"

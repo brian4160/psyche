@@ -33,10 +33,16 @@ GWT_AGENTS = [
 
 GWT_WITH_HOT_AGENTS = GWT_AGENTS + ["hot"]
 
+# GWT ablation variants
+GWT_CORE_AGENTS = ["perception", "emotion", "reasoning", "social"]  # 4 core only
+GWT_NO_DRIVE_AGENTS = [a for a in GWT_AGENTS if a != "drive"]
+GWT_NO_CRITIC_AGENTS = [a for a in GWT_AGENTS if a != "critic"]
 
-# Experimental conditions — 7 total
+
+# Experimental conditions
 # These map to Architecture objects, not just agent configs
 CONDITION_DESCRIPTIONS = {
+    # --- Original conditions ---
     "plain": "Plain single-agent LLM (control — no consciousness architecture)",
     "plain-multi": "Plain multi-call LLM (compute control — 8 candidates, pick best)",
     "gwt": "Global Workspace Theory — multi-agent broadcast workspace",
@@ -45,6 +51,11 @@ CONDITION_DESCRIPTIONS = {
     "gwt+hot": "GWT + HOT — workspace broadcast with meta-cognitive reflection",
     "gwt+freudian": "GWT + Freudian — workspace broadcast with psychodynamic conflict",
     "gwt+hot+freudian": "All three theories combined",
+    # --- Ablation conditions ---
+    "gwt-core": "GWT with only 4 core modules (perception, emotion, reasoning, social)",
+    "gwt-nodrive": "GWT without drive module",
+    "gwt-nocritic": "GWT without critic module",
+    "freudian-bland": "Freudian with minimal/bland prompts (controls for prompt quality)",
 }
 
 # GWT config used when GWT is part of a condition
@@ -105,6 +116,8 @@ def list_conditions() -> list[str]:
 AVAILABLE_MODELS = {
     "mistral-nemo": "Mistral Nemo 12B",
     "mistral-small": "Mistral Small 22B",
+    "mistral-small:q8_0": "Mistral Small 22B (Q8 quantization)",
+    "qwen2.5:14b": "Qwen 2.5 14B (cross-family validation)",
 }
 
 
@@ -143,6 +156,15 @@ def build_architecture(condition_name: str, model: str | None = None):
         return CombinedArchitecture(llm, use_hot=False, use_freudian=True)
     elif condition_name == "gwt+hot+freudian":
         return CombinedArchitecture(llm, use_hot=True, use_freudian=True)
+    # --- Ablation conditions ---
+    elif condition_name == "gwt-core":
+        return GWTArchitecture(llm, agents_override=GWT_CORE_AGENTS)
+    elif condition_name == "gwt-nodrive":
+        return GWTArchitecture(llm, agents_override=GWT_NO_DRIVE_AGENTS)
+    elif condition_name == "gwt-nocritic":
+        return GWTArchitecture(llm, agents_override=GWT_NO_CRITIC_AGENTS)
+    elif condition_name == "freudian-bland":
+        return FreudianArchitecture(llm, bland_mode=True)
     else:
         raise ValueError(
             f"Unknown condition: {condition_name}. "

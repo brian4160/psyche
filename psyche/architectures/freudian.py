@@ -51,11 +51,26 @@ class FreudianArchitecture(Architecture):
         "You are NOT talking to the person — this is internal."
     )
 
-    def __init__(self, llm: LLMClient):
+    # Bland prompts for ablation — tests if it's the architecture, not the prompt quality
+    BLAND_ID_PROMPT = (
+        "Say what you want to do right now. 1 sentence. Internal thought only."
+    )
+
+    BLAND_SUPEREGO_PROMPT = (
+        "Say what would be appropriate to do right now. 1 sentence. Internal thought only."
+    )
+
+    def __init__(self, llm: LLMClient, bland_mode: bool = False):
         super().__init__(llm)
         self._conversation: list[dict] = []
         self._pending_user: Post | None = None
         self._reply_event = threading.Event()
+        if bland_mode:
+            self._id_prompt = self.BLAND_ID_PROMPT
+            self._superego_prompt = self.BLAND_SUPEREGO_PROMPT
+        else:
+            self._id_prompt = self.ID_PROMPT
+            self._superego_prompt = self.SUPEREGO_PROMPT
         self._repressed: list[str] = []
 
     def inject_user_message(self, text: str) -> None:
@@ -110,7 +125,7 @@ class FreudianArchitecture(Architecture):
             f"What is your raw, unfiltered impulse?"
         )
         id_response = await self.llm.generate(
-            system_prompt=self.ID_PROMPT,
+            system_prompt=self._id_prompt,
             user_prompt=id_context,
             temperature=0.95,
         )
@@ -125,7 +140,7 @@ class FreudianArchitecture(Architecture):
             f"What is your moral/social judgment?"
         )
         superego_response = await self.llm.generate(
-            system_prompt=self.SUPEREGO_PROMPT,
+            system_prompt=self._superego_prompt,
             user_prompt=superego_context,
             temperature=0.5,
         )
