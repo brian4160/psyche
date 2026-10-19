@@ -12,25 +12,36 @@ WHAT THIS IS
   capital economy gains; household consumption depends on how much of the lost wage
   income is replaced by transfers (the "dole"); and an unreplaced demand hole can tip
   the system into crisis. Each of the essay's modeled terminal states is a parameter
-  set. A "loom" comparator shows what the standard reassurance assumes.
+  set. A "loom" comparator shows what the standard reassurance assumes, and carries the
+  probability that the essay's premise is wrong (P_PREMISE_WRONG).
+
+  Three layers of output:
+    1. Point runs of each scenario with the central parameters (results.md, trajectories.csv).
+    2. A Monte Carlo over the shared technology and labor-market parameters, reporting
+       10th/50th/90th percentiles of each measure, both per scenario and for the
+       probability-weighted "all-in" mixture (uncertainty.md, uncertainty.csv).
+    3. A retiree drawdown module: what 4% real withdrawals do to savings under three
+       strategies (all equity; 60/40; equity plus a three-year cash bucket).
 
 WHAT THIS IS NOT
   A forecast. Every parameter is a judgment, stated in the Params dataclass so it can be
-  rejected or changed. Magnitudes are meant to show shape and relative ordering across
-  scenarios, not point estimates. Units: 2026 output = 100; 2026 jobs = 100. "Real"
-  means deflated by a consumer price index that falls when AI gains are competed into
-  prices rather than captured as rents. Wages carry trend productivity growth of 1.5%
-  a year in every scenario, so a flat real-wage line already means "falling behind".
+  rejected or changed. The Monte Carlo ranges are judgments too. Magnitudes show shape
+  and ordering; the percentiles show how much the shape depends on the judgments.
+  Units: 2026 output = 100; 2026 jobs = 100. "Real" means deflated by a consumer price
+  index that falls when AI gains are competed into prices rather than captured as rents.
+  Wages carry trend productivity growth of 1.5% a year in every scenario, so a flat
+  real-wage line already means "falling behind".
 
-Run:  python3 two_economy.py
-      writes CSV, JSON and markdown tables to ./output  (charts: see charts.py)
+Run:  python3 two_economy.py           (point runs + Monte Carlo; ~20 s)
+      python3 two_economy.py --fast    (point runs only)
 """
 from __future__ import annotations
 
 import json
 import math
 import os
-from dataclasses import dataclass, asdict
+import sys
+from dataclasses import dataclass, asdict, replace
 from typing import Optional
 
 import numpy as np
@@ -40,9 +51,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "output")
 YEARS = list(range(2026, 2041))
 
-# Posteriors from the essay's scenario table (terminal states at 2040). The wildcard
+# Posteriors from the essay's scenario table (terminal states at 2040), CONDITIONAL on the
+# essay's premise (a general substitute arrives within 10 to 15 years). The wildcard
 # (AI as an independent agent class, 8%) is not modeled numerically; the five modeled
-# states are renormalized when computing probability-weighted outcomes.
+# states are renormalized.
 ESSAY_POSTERIOR = {
     "managed_dependency": 0.37,
     "durable_fragmentation": 0.20,
@@ -50,6 +62,22 @@ ESSAY_POSTERIOR = {
     "capability_diffusion": 0.11,
     "prolonged_disorder": 0.11,
 }
+# The letter author's judgment that the premise is wrong and the standard precedent holds
+# (capability plateaus; new tasks absorb displaced labor). Represented by the loom comparator.
+P_PREMISE_WRONG = 0.25
+
+
+def all_in_weights() -> dict:
+    s = sum(ESSAY_POSTERIOR.values())
+    w = {k: (1 - P_PREMISE_WRONG) * v / s for k, v in ESSAY_POSTERIOR.items()}
+    w["loom"] = P_PREMISE_WRONG
+    return w
+
+
+def conditional_weights() -> dict:
+    s = sum(ESSAY_POSTERIOR.values())
+    return {k: v / s for k, v in ESSAY_POSTERIOR.items()}
+
 
 # ----------------------------------------------------------------------------------
 # 2026 calibration anchors (rounded; sources in MODEL.md)
@@ -70,6 +98,10 @@ U0 = 0.042            # unemployment rate, 2026
 ENTRY_GAP0 = 0.19     # entry-level employment gap in AI-exposed occupations (Stanford, Aug 2026)
 CAPEX_SHARE0 = 0.015  # AI-related investment, share of GDP, 2026 (Epoch AI, broad measure)
 R_BASE0 = 5.0         # pre-existing tech rents (index) so an AI-rents index is defined
+WITHDRAWAL = 4.0      # retiree drawdown: 4% of starting savings a year, real, constant
+BUCKET_YEARS = 3      # cash bucket strategy: years of withdrawals held in cash
+BOND_REAL_RETURN = 0.015   # inflation-protected bond, real
+CASH_REAL_RETURN = 0.0     # cash, real
 
 
 @dataclass
@@ -79,8 +111,6 @@ class Params:
     description: str
 
     # --- technology: capability frontier (logistic in time) ---------------------------
-    # fraction of tasks in each family that frontier AI (or robotics) can perform at
-    # acceptable quality. 2026 anchors and ceilings are judgments.
     cog_cap_2026: float = 0.25
     cog_cap_max: float = 0.85
     cog_cap_mid: float = 2031.0
@@ -151,6 +181,15 @@ class Params:
     license_cap_late: float = 0.50   # ... by 2040
     license_absorption: float = 0.5  # share of freed capacity that reduces demand (rest meets unmet need)
 
+    # --- listed equity: how national capital income maps to the index -------------------
+    equity_beta: float = 0.6         # share of a change in national capital income that reaches listed earnings
+    equity_yield: float = 0.035      # real cash yield (dividends + buybacks) at a neutral multiple
+
+    # --- household mappings (judgment coefficients, sampled in the Monte Carlo) --------
+    entry_gap_slope: float = 0.4     # how fast the entry-level gap widens with deployment
+    hazard_slope: float = 1.5        # involuntary-exit hazard per unit of net task displacement
+    protection_years: float = 6.0    # e-folding time of incumbents' attrition protection
+
 
 def anchored_logistic(t: float, v2026: float, vmax: float, mid: float, k: float) -> float:
     """Logistic rising to vmax, shifted so that its 2026 value equals v2026."""
@@ -181,6 +220,57 @@ def multiple_base(p: Params, i: int) -> float:
     return 1.0
 
 
+def add_drawdown(df: pd.DataFrame) -> pd.DataFrame:
+    """Retiree savings under constant real withdrawals (WITHDRAWAL per year from 100).
+
+    all_equity: everything in the broad equity index.
+    60/40:      rebalanced yearly between equity and the bond index.
+    bucket:     equity plus BUCKET_YEARS of withdrawals in cash; withdrawals come from cash
+                whenever equities are below their previous peak, and the bucket is refilled
+                from equities when they make a new peak. Cash earns nothing in real terms.
+    """
+    broad = df.broad_equity.to_numpy()          # price index, used for the peak rule
+    tr = df.equity_total_return.to_numpy()      # total return, used for growth
+    bond = df.bond.to_numpy()
+    eq_ret = np.diff(tr) / tr[:-1]
+    bond_ret = np.diff(bond) / bond[:-1]
+
+    v = 100.0
+    path_a = [v]
+    for r in eq_ret:
+        v = max(0.0, (v - WITHDRAWAL) * (1 + r))
+        path_a.append(v)
+
+    v = 100.0
+    path_b = [v]
+    for re_, rb in zip(eq_ret, bond_ret):
+        v = max(0.0, (v - WITHDRAWAL) * (1 + 0.6 * re_ + 0.4 * rb))
+        path_b.append(v)
+
+    bucket_size = WITHDRAWAL * BUCKET_YEARS
+    eq, cash = 100.0 - bucket_size, bucket_size
+    peak = broad[0]
+    path_c = [eq + cash]
+    for i, r in enumerate(eq_ret):
+        if broad[i] < peak * 0.999 and cash >= WITHDRAWAL:
+            cash -= WITHDRAWAL
+        else:
+            eq -= WITHDRAWAL
+        eq = max(0.0, eq * (1 + r))
+        cash *= (1 + CASH_REAL_RETURN)
+        if broad[i + 1] >= peak:
+            peak = broad[i + 1]
+            refill = min(bucket_size - cash, eq)
+            eq -= refill
+            cash += refill
+        path_c.append(eq + cash)
+
+    df["draw_all_equity"] = path_a
+    df["draw_60_40"] = path_b
+    df["draw_bucket"] = path_c
+    return df
+
+
 def run(p: Params) -> pd.DataFrame:
     rows = []
     g = p.base_growth
@@ -204,6 +294,8 @@ def run(p: Params) -> pd.DataFrame:
     ss = 1.0
     capex = 1.0
     cum_survival = 1.0
+    broad_prev = None
+    tr = 1.0
 
     def task_factor(D: float, D0: float, nu: float) -> float:
         return (1 - D + nu * r * D) / (1 - D0 + nu * r * D0)
@@ -329,37 +421,37 @@ def run(p: Params) -> pd.DataFrame:
                 M *= 0.60 + 0.35 * min(1.0, yrs / 4.0)
             else:
                 M *= 0.50
-        broad = (K_net / (Y0 - W0)) * M / price
+        equity_earnings = 1 + p.equity_beta * (K_net / (Y0 - W0) - 1)   # listed earnings track capital income with beta < 1
+        broad = equity_earnings * M / price                               # real price index
+        if broad_prev is not None:
+            tr = tr * (broad / broad_prev) * (1 + p.equity_yield / M)     # total return: price + cash yield (yield rises as the multiple falls)
+        broad_prev = broad
         ai_rents_index = (R / R_BASE0) * M * ai_haircut / price
-        bond = bond * 1.01
-        portfolio = 0.6 * broad + 0.4 * bond
+        bond = bond * (1 + BOND_REAL_RETURN)
+        portfolio = 0.6 * tr + 0.4 * bond          # total-return 60/40, nothing withdrawn
+        portfolio_80_20 = 0.8 * tr + 0.2 * bond
 
         # --- Social Security ------------------------------------------------------------
         if t == 2033 and p.ss_cut_2033 > 0:
             ss = 1 - p.ss_cut_2033
 
         # --- household archetypes -------------------------------------------------------
-        # Retired couple: ~55% Social Security, ~45% portfolio draw (as % of value)
         retiree_income = (0.55 * ss + 0.45 * portfolio) / price
         care_cost = (w_p / W_PHYS0) / price
 
-        # Mid-career cognitive incumbent: protected by attrition early, exposed later
-        prot = math.exp(-i / 6.0)
+        prot = math.exp(-i / p.protection_years)
         rel = w_c / w_c0_t
         incumbent_wage = (1 - (1 - prot) * (1 - rel)) * trend / price
-        hazard = 0.015 + (1 - prot) * dD_net * 1.5
+        hazard = 0.015 + (1 - prot) * dD_net * p.hazard_slope
         if crisis_year is not None and t - crisis_year in (0, 1):
             hazard += 0.06 if t == crisis_year else 0.03
         cum_survival *= (1 - hazard)
         dole_per_head = min(0.6 * w_c0_t, T_new / max(1.0, L - E)) if (L - E) > 0 else 0.0
         displaced_income = ((0.55 * (w_p / w_p0_t) * 0.9 * trend) + dole_per_head / W_COG0) / price
 
-        # Entrant into cognitive work (new graduate): openings relative to 2026 x real wage
-        entry_gap = min(0.60, ENTRY_GAP0 + 0.4 * max(0.0, D_c - D_c0))
+        entry_gap = min(0.60, ENTRY_GAP0 + p.entry_gap_slope * max(0.0, D_c - D_c0))
         entrant = ((1 - entry_gap) / (1 - ENTRY_GAP0)) * rel * trend / price
 
-        # Licensed presence profession (clinical medicine): licensure caps substitution,
-        # unmet demand absorbs part of the freed capacity, aging raises demand
         cap_lic = p.license_cap_early if t < 2034 else p.license_cap_early + (p.license_cap_late - p.license_cap_early) * (t - 2034) / 6.0
         D_lic = min(0.5 * D_c, cap_lic)
         D_lic_net = D_lic * (1 - 0.2 * r)
@@ -371,7 +463,6 @@ def run(p: Params) -> pd.DataFrame:
             w_lic *= 0.85
         licensed = w_lic * trend / price
 
-        # Infrastructure engineer: wage tracks the AI capex cycle
         infra = min(1.4, capex ** 0.2) * trend / price
 
         rows.append(dict(
@@ -384,30 +475,31 @@ def run(p: Params) -> pd.DataFrame:
             labor_income=W, labor_income_ref=W_ref, transfers=T, dividend=dividend,
             household_income=household_income, real_household_income=household_income / price / (W0 + T0),
             dependency_ratio=dep_ratio, output=Y, potential_output=Y_pot, demand_gap=gap,
-            labor_share=W / (Y * price), capital_income_net=K_net, ai_rents=R, ai_rents_share=R / (Y * price), price_level=price,
-            capex_index=capex,
+            labor_share=W / (Y * price), capital_income_net=K_net, ai_rents=R, ai_rents_share=R / (Y * price),
+            price_level=price, capex_index=capex,
             crisis=int(crisis_year is not None and t >= crisis_year), crisis_year=crisis_year or 0,
-            valuation_multiple=M, broad_equity=broad, ai_rents_index=ai_rents_index, bond=bond,
-            portfolio_60_40=portfolio, social_security=ss,
+            valuation_multiple=M, broad_equity=broad, equity_total_return=tr, ai_rents_index=ai_rents_index, bond=bond,
+            portfolio_60_40=portfolio, portfolio_80_20=portfolio_80_20, social_security=ss,
             retiree_income=retiree_income, care_cost=care_cost,
             incumbent_wage=incumbent_wage, incumbent_hazard=hazard, incumbent_survival=cum_survival,
+            incumbent_exit=1 - cum_survival,
             displaced_income=displaced_income, entrant_index=entrant, entry_gap=entry_gap,
             licensed_index=licensed, infra_index=infra,
         ))
 
-        # --- flows for next year --------------------------------------------------------
         movers = p.mobility * X_c
         S_c = (S_c - movers) * (1 + p.labor_growth)
         S_p = (S_p + movers) * (1 + p.labor_growth)
 
-    return pd.DataFrame(rows)
+    return add_drawdown(pd.DataFrame(rows))
 
 
 SCENARIOS = [
     Params(
         key="loom", name="Comparator: the loom",
         description="Capability plateaus well short of a general substitute and most new tasks go to humans. "
-                    "This is what the standard reassurance (steam, combustion, transistor) assumes.",
+                    "This is what the standard reassurance (steam, combustion, transistor) assumes, and it "
+                    "carries the probability that the essay's premise is wrong.",
         cog_cap_max=0.45, cog_cap_mid=2030.0, phys_cap_max=0.25,
         new_task_rate=0.9, new_task_share_cog=0.80, new_task_share_phys=0.80,
         rent_capture=0.50, transfer_response=0.30, crisis_response="dole",
@@ -451,129 +543,292 @@ SCENARIOS = [
         crisis_shock=0.12, crisis_persistence=0.7, ss_cut_2033=0.22,
     ),
 ]
+SCENARIO_BY_KEY = {p.key: p for p in SCENARIOS}
+DEFAULTS = Params(key="_", name="_", description="_")
+
+# ----------------------------------------------------------------------------------
+# Monte Carlo: judgment ranges (uniform) for the parameters every substitution scenario
+# shares. Scenario-specific values are kept as offsets from the defaults, so a scenario
+# that is slower or more human-friendly than the default stays that way in every draw.
+# ----------------------------------------------------------------------------------
+MC_RANGES = {
+    "cog_cap_max": (0.65, 0.95),
+    "cog_cap_mid": (2029.0, 2035.0),
+    "cog_cap_k": (0.30, 0.60),
+    "phys_cap_max": (0.40, 0.75),
+    "phys_cap_mid": (2034.0, 2042.0),
+    "adoption_rate": (0.15, 0.40),
+    "new_task_rate": (0.30, 0.80),
+    "new_task_share_cog": (0.10, 0.45),
+    "new_task_share_phys": (0.25, 0.60),
+    "scale_effect": (0.20, 0.60),
+    "demand_elasticity": (-1.0, -0.40),
+    "mobility": (0.15, 0.40),
+    "phi_cog": (0.30, 0.70),
+    "reservation_wage": (0.35, 0.55),
+    "license_cap_early": (0.20, 0.45),
+    "license_absorption": (0.30, 0.70),
+    "entry_gap_slope": (0.20, 0.60),
+    "hazard_slope": (0.80, 2.20),
+    "protection_years": (4.0, 9.0),
+    "capex_growth": (0.10, 0.30),
+    "equity_beta": (0.40, 0.80),
+    "equity_yield": (0.025, 0.045),
+}
+# The comparator has its own ranges for the parameters that define it.
+LOOM_RANGES = {
+    "cog_cap_max": (0.35, 0.55),
+    "cog_cap_mid": (2028.0, 2033.0),
+    "new_task_share_cog": (0.65, 0.90),
+    "new_task_share_phys": (0.65, 0.90),
+    "new_task_rate": (0.70, 1.00),
+}
+BOUNDS = {
+    "new_task_share_cog": (0.0, 0.95), "new_task_share_phys": (0.0, 0.95), "new_task_rate": (0.1, 1.2),
+    "adoption_rate": (0.05, 0.6), "cog_cap_max": (0.3, 0.98), "phys_cap_max": (0.1, 0.95),
+    "demand_elasticity": (-1.5, -0.2), "mobility": (0.05, 0.6), "scale_effect": (0.0, 1.0),
+}
+MC_MEASURES = [
+    "real_wage_cog", "real_wage_phys", "not_employed", "dependency_ratio", "real_household_income",
+    "labor_share", "output", "broad_equity", "portfolio_60_40", "retiree_income", "incumbent_wage",
+    "incumbent_exit", "entrant_index", "licensed_index", "infra_index",
+    "draw_all_equity", "draw_60_40", "draw_bucket",
+]
 
 
-def fmt_pct(x: float) -> str:
-    return f"{100 * x:.0f}%"
+def sample_params(rng: np.random.Generator) -> tuple[dict, dict]:
+    shared = {k: float(rng.uniform(*v)) for k, v in MC_RANGES.items()}
+    loom = dict(shared)
+    for k, v in LOOM_RANGES.items():
+        loom[k] = float(rng.uniform(*v))
+    return shared, loom
 
 
-def fmt_idx(x: float) -> str:
-    return f"{100 * x:.0f}"
+def apply_sample(p: Params, sampled: dict, is_loom: bool) -> Params:
+    changes = {}
+    for k, v in sampled.items():
+        if is_loom and k in LOOM_RANGES:
+            val = v
+        else:
+            val = v + (getattr(p, k) - getattr(DEFAULTS, k))   # keep the scenario's offset
+        lo, hi = BOUNDS.get(k, (-1e9, 1e9))
+        changes[k] = float(min(max(val, lo), hi))
+    return replace(p, **changes)
+
+
+def weighted(df: pd.DataFrame, weights: dict, key: str, name: str) -> pd.DataFrame:
+    num = [c for c in df.select_dtypes("number").columns if c != "year"]
+    parts = [df[df.scenario == k].set_index("year")[num] * w for k, w in weights.items()]
+    exp = sum(parts)
+    exp["scenario"] = key
+    exp["scenario_name"] = name
+    return exp.reset_index()
+
+
+def monte_carlo(n: int = 400, seed: int = 20261018) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    w_all = all_in_weights()
+    w_cond = conditional_weights()
+    keys = [p.key for p in SCENARIOS]
+    store = {k: {m: [] for m in MC_MEASURES} for k in keys + ["all_in", "conditional"]}
+    for _ in range(n):
+        shared, loom = sample_params(rng)
+        frames = {}
+        for p in SCENARIOS:
+            q = apply_sample(p, loom if p.key == "loom" else shared, p.key == "loom")
+            frames[p.key] = run(q).set_index("year")
+        for k in keys:
+            for m in MC_MEASURES:
+                store[k][m].append(frames[k][m].to_numpy())
+        for label, w in (("all_in", w_all), ("conditional", w_cond)):
+            for m in MC_MEASURES:
+                store[label][m].append(sum(frames[k][m].to_numpy() * wk for k, wk in w.items()))
+    recs = []
+    for k, measures in store.items():
+        for m, arrs in measures.items():
+            a = np.vstack(arrs)
+            p10, p50, p90 = np.percentile(a, [10, 50, 90], axis=0)
+            mean = a.mean(axis=0)
+            for j, yr in enumerate(YEARS):
+                recs.append(dict(kind=k, measure=m, year=yr, p10=p10[j], p50=p50[j], p90=p90[j], mean=mean[j]))
+    return pd.DataFrame(recs)
+
+
+# ----------------------------------------------------------------------------------
+# Reporting
+# ----------------------------------------------------------------------------------
+PCT = {"not_employed", "dependency_ratio", "labor_share", "incumbent_exit", "ai_rents_share"}
+LABELS = {
+    "real_wage_cog": "Real cognitive wage (index)",
+    "real_wage_phys": "Real presence wage (index)",
+    "not_employed": "Not employed, share of workforce",
+    "dependency_ratio": "Dependency ratio",
+    "real_household_income": "Real household income, all households (index)",
+    "labor_share": "Labor share of output",
+    "output": "Output (index)",
+    "broad_equity": "Broad equity, real (index)",
+    "portfolio_60_40": "60/40 portfolio, total return, real (index)",
+    "retiree_income": "Retired couple income (index)",
+    "incumbent_wage": "Incumbent professional who keeps the job, real pay (index)",
+    "incumbent_exit": "P(incumbent involuntary exit by year)",
+    "entrant_index": "New graduate opportunity (openings x pay, index)",
+    "licensed_index": "Licensed presence profession, real pay (index)",
+    "infra_index": "Infrastructure engineer, real pay (index)",
+    "draw_all_equity": "Retiree savings, all equity, 4% real withdrawals (start 100)",
+    "draw_60_40": "Retiree savings, 60/40, 4% real withdrawals (start 100)",
+    "draw_bucket": "Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100)",
+}
+
+
+def fmt(m: str, x: float) -> str:
+    if m in PCT:
+        return f"{100 * x:.0f}%"
+    if m == "output":
+        return f"{x:.0f}"
+    return f"{100 * x:.0f}" if m.startswith(("real_", "broad", "portfolio", "retiree", "incumbent_wage", "entrant", "licensed", "infra")) else f"{x:.0f}"
 
 
 def summary_tables(df: pd.DataFrame) -> str:
     lines = []
     for yr in (2031, 2036, 2040):
-        lines.append(f"\n### Macro picture, {yr} (2026 = 100 unless a percentage)\n")
+        lines.append(f"\n### Macro picture, {yr} (2026 = 100 unless a percentage; central parameters)\n")
         lines.append("| Scenario | AI can do (cognitive tasks) | Deployed | Human cognitive jobs demanded | Real cognitive wage | Real presence wage | Not employed | Labor share | AI rents, share of output | Dependency ratio | Real household income | Output | Broad equity (real) | Crisis year |")
         lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
         for p in SCENARIOS:
             d = df[(df.scenario == p.key) & (df.year == yr)].iloc[0]
             lines.append(
-                f"| {p.name} | {fmt_pct(d.cap_cog)} | {fmt_pct(d.deployed_cog)} | {fmt_idx(d.jobs_cog_demand)} | "
-                f"{fmt_idx(d.real_wage_cog)} | {fmt_idx(d.real_wage_phys)} | {fmt_pct(d.not_employed)} | "
-                f"{fmt_pct(d.labor_share)} | {fmt_pct(d.ai_rents_share)} | {fmt_pct(d.dependency_ratio)} | "
-                f"{fmt_idx(d.real_household_income)} | {d.output:.0f} | {fmt_idx(d.broad_equity)} | "
+                f"| {p.name} | {100 * d.cap_cog:.0f}% | {100 * d.deployed_cog:.0f}% | {100 * d.jobs_cog_demand:.0f} | "
+                f"{100 * d.real_wage_cog:.0f} | {100 * d.real_wage_phys:.0f} | {100 * d.not_employed:.0f}% | "
+                f"{100 * d.labor_share:.0f}% | {100 * d.ai_rents_share:.0f}% | {100 * d.dependency_ratio:.0f}% | "
+                f"{100 * d.real_household_income:.0f} | {d.output:.0f} | {100 * d.broad_equity:.0f} | "
                 f"{int(d.crisis_year) or '—'} |"
             )
     return "\n".join(lines)
 
 
 def household_tables(df: pd.DataFrame) -> str:
-    lines = ["\n### Household archetypes (real income or opportunity index, 2026 = 100)\n",
+    lines = ["\n### Household archetypes (real income or opportunity index, 2026 = 100; central parameters)\n",
              "Trend productivity growth of 1.5% a year is included, so a flat line means falling behind the economy as a whole.\n"]
     lines.append("| Scenario | Retired couple 2033 | Retired couple 2040 | 60/40 portfolio 2033 | 60/40 portfolio 2040 | Social Security 2040 | Care-labor cost 2040 | Incumbent professional wage 2036 | P(involuntary exit by 2036) | Displaced professional income 2036 | New graduate (cognitive) 2030 | New graduate 2034 | New graduate 2038 | Licensed presence profession 2034 | Licensed 2040 | Infrastructure engineer 2030 | Infra 2036 |")
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for p in SCENARIOS:
         d = df[df.scenario == p.key].set_index("year")
         lines.append(
-            f"| {p.name} | {fmt_idx(d.loc[2033, 'retiree_income'])} | {fmt_idx(d.loc[2040, 'retiree_income'])} | "
-            f"{fmt_idx(d.loc[2033, 'portfolio_60_40'])} | {fmt_idx(d.loc[2040, 'portfolio_60_40'])} | "
-            f"{fmt_idx(d.loc[2040, 'social_security'])} | {fmt_idx(d.loc[2040, 'care_cost'])} | "
-            f"{fmt_idx(d.loc[2036, 'incumbent_wage'])} | {fmt_pct(1 - d.loc[2036, 'incumbent_survival'])} | "
-            f"{fmt_idx(d.loc[2036, 'displaced_income'])} | "
-            f"{fmt_idx(d.loc[2030, 'entrant_index'])} | {fmt_idx(d.loc[2034, 'entrant_index'])} | {fmt_idx(d.loc[2038, 'entrant_index'])} | "
-            f"{fmt_idx(d.loc[2034, 'licensed_index'])} | {fmt_idx(d.loc[2040, 'licensed_index'])} | "
-            f"{fmt_idx(d.loc[2030, 'infra_index'])} | {fmt_idx(d.loc[2036, 'infra_index'])} |"
+            f"| {p.name} | {100 * d.loc[2033, 'retiree_income']:.0f} | {100 * d.loc[2040, 'retiree_income']:.0f} | "
+            f"{100 * d.loc[2033, 'portfolio_60_40']:.0f} | {100 * d.loc[2040, 'portfolio_60_40']:.0f} | "
+            f"{100 * d.loc[2040, 'social_security']:.0f} | {100 * d.loc[2040, 'care_cost']:.0f} | "
+            f"{100 * d.loc[2036, 'incumbent_wage']:.0f} | {100 * d.loc[2036, 'incumbent_exit']:.0f}% | "
+            f"{100 * d.loc[2036, 'displaced_income']:.0f} | "
+            f"{100 * d.loc[2030, 'entrant_index']:.0f} | {100 * d.loc[2034, 'entrant_index']:.0f} | {100 * d.loc[2038, 'entrant_index']:.0f} | "
+            f"{100 * d.loc[2034, 'licensed_index']:.0f} | {100 * d.loc[2040, 'licensed_index']:.0f} | "
+            f"{100 * d.loc[2030, 'infra_index']:.0f} | {100 * d.loc[2036, 'infra_index']:.0f} |"
         )
     return "\n".join(lines)
 
 
-def weighted(df: pd.DataFrame) -> pd.DataFrame:
-    keys = list(ESSAY_POSTERIOR)
-    w = np.array([ESSAY_POSTERIOR[k] for k in keys])
-    w = w / w.sum()
-    num = [c for c in df.select_dtypes("number").columns if c != "year"]
-    parts = []
-    for k, wk in zip(keys, w):
-        d = df[df.scenario == k].set_index("year")[num] * wk
-        parts.append(d)
-    exp = sum(parts)
-    exp["scenario"] = "probability_weighted"
-    exp["scenario_name"] = "Probability-weighted (essay posteriors, five modeled states)"
-    return exp.reset_index()
+def drawdown_tables(df: pd.DataFrame) -> str:
+    lines = ["\n### Retiree savings under 4% real withdrawals (start = 100; central parameters)\n",
+             "All equity: everything in the broad equity index. 60/40: rebalanced yearly. Bucket: equity plus three "
+             "years of withdrawals in cash, spent down only when equities are below their previous peak and refilled "
+             "at new peaks. 'Low point' is the lowest value reached in 2026 to 2040.\n",
+             "| Scenario | All equity, low point | All equity, 2040 | 60/40, low point | 60/40, 2040 | Bucket, low point | Bucket, 2040 | Equity index peak-to-trough |",
+             "|---|---|---|---|---|---|---|---|"]
+    for p in SCENARIOS:
+        d = df[df.scenario == p.key].set_index("year")
+        peak = d.broad_equity.cummax()
+        dd = float((d.broad_equity / peak - 1).min())
+        lines.append(
+            f"| {p.name} | {d.draw_all_equity.min():.0f} | {d.loc[2040, 'draw_all_equity']:.0f} | "
+            f"{d.draw_60_40.min():.0f} | {d.loc[2040, 'draw_60_40']:.0f} | "
+            f"{d.draw_bucket.min():.0f} | {d.loc[2040, 'draw_bucket']:.0f} | {100 * dd:.0f}% |"
+        )
+    return "\n".join(lines)
 
 
-def expectation_table(df: pd.DataFrame, exp: pd.DataFrame) -> str:
-    lines = ["\n### Probability-weighted expectation and range across the five modeled states\n"]
-    lines.append("Weights: essay posteriors renormalized over the five modeled states (the 8% wildcard is excluded). "
-                 "The range is the lowest and highest scenario value, not a confidence interval.\n")
-    lines.append("| Measure | 2031 expected | 2031 range | 2036 expected | 2036 range | 2040 expected | 2040 range |")
-    lines.append("|---|---|---|---|---|---|---|")
-    measures = [
-        ("Real cognitive wage (index)", "real_wage_cog", fmt_idx),
-        ("Real presence wage (index)", "real_wage_phys", fmt_idx),
-        ("Not employed, share of workforce", "not_employed", fmt_pct),
-        ("Dependency ratio", "dependency_ratio", fmt_pct),
-        ("Real household income, all households (index)", "real_household_income", fmt_idx),
-        ("Labor share of output", "labor_share", fmt_pct),
-        ("AI rents, share of output", "ai_rents_share", fmt_pct),
-        ("Output (index)", "output", lambda x: f"{x:.0f}"),
-        ("Broad equity, real (index)", "broad_equity", fmt_idx),
-        ("60/40 portfolio, real (index)", "portfolio_60_40", fmt_idx),
-        ("Retired couple income (index)", "retiree_income", fmt_idx),
-        ("Incumbent professional wage (index)", "incumbent_wage", fmt_idx),
-        ("P(incumbent involuntary exit by year)", None, fmt_pct),
-        ("New graduate opportunity (index)", "entrant_index", fmt_idx),
-        ("Licensed presence profession (index)", "licensed_index", fmt_idx),
-        ("Infrastructure engineer (index)", "infra_index", fmt_idx),
-    ]
-    modeled = df[df.scenario.isin(ESSAY_POSTERIOR)]
-    for label, col, f in measures:
-        cells = [label]
+def uncertainty_tables(u: pd.DataFrame) -> str:
+    w = all_in_weights()
+    lines = ["# Uncertainty: Monte Carlo over the shared parameters\n",
+             f"Each draw samples the technology and labor-market parameters from the judgment ranges in `MC_RANGES` "
+             f"(the comparator from `LOOM_RANGES`), keeps each scenario's offsets, runs all six scenarios, and "
+             f"forms the probability-weighted mixture. Weights (all-in): "
+             + ", ".join(f"{k} {100 * v:.0f}%" for k, v in w.items())
+             + f". P(premise wrong) = {100 * P_PREMISE_WRONG:.0f}%.\n",
+             "\n## All-in expectation: 10th / 50th / 90th percentile across draws\n",
+             "| Measure | 2031 | 2036 | 2040 |", "|---|---|---|---|"]
+    a = u[u.kind == "all_in"].set_index(["measure", "year"])
+    for m in MC_MEASURES:
+        cells = [LABELS[m]]
         for yr in (2031, 2036, 2040):
-            if col is None:
-                e = 1 - exp[exp.year == yr]["incumbent_survival"].iloc[0]
-                vals = 1 - modeled[modeled.year == yr]["incumbent_survival"]
-            else:
-                e = exp[exp.year == yr][col].iloc[0]
-                vals = modeled[modeled.year == yr][col]
-            cells += [f(e), f"{f(vals.min())} to {f(vals.max())}"]
+            r = a.loc[(m, yr)]
+            cells.append(f"{fmt(m, r.p50)} ({fmt(m, r.p10)} to {fmt(m, r.p90)})")
+        lines.append("| " + " | ".join(cells) + " |")
+    lines.append("\n## Conditional on the premise (the essay's five states only): median and 10th to 90th percentile\n")
+    lines.append("| Measure | 2031 | 2036 | 2040 |")
+    lines.append("|---|---|---|---|")
+    c = u[u.kind == "conditional"].set_index(["measure", "year"])
+    for m in MC_MEASURES:
+        cells = [LABELS[m]]
+        for yr in (2031, 2036, 2040):
+            r = c.loc[(m, yr)]
+            cells.append(f"{fmt(m, r.p50)} ({fmt(m, r.p10)} to {fmt(m, r.p90)})")
+        lines.append("| " + " | ".join(cells) + " |")
+    lines.append("\n## By scenario, 2036: median (10th to 90th percentile)\n")
+    key_measures = ["real_wage_cog", "real_household_income", "dependency_ratio", "portfolio_60_40",
+                    "incumbent_wage", "incumbent_exit", "entrant_index", "licensed_index", "draw_all_equity", "draw_bucket"]
+    lines.append("| Scenario | " + " | ".join(LABELS[m] for m in key_measures) + " |")
+    lines.append("|---|" + "---|" * len(key_measures))
+    s = u.set_index(["kind", "measure", "year"])
+    for p in SCENARIOS:
+        cells = [p.name]
+        for m in key_measures:
+            r = s.loc[(p.key, m, 2036)]
+            cells.append(f"{fmt(m, r.p50)} ({fmt(m, r.p10)}–{fmt(m, r.p90)})")
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
 def main() -> None:
+    fast = "--fast" in sys.argv
     os.makedirs(OUT, exist_ok=True)
     frames = [run(p) for p in SCENARIOS]
     df = pd.concat(frames, ignore_index=True)
-    exp = weighted(df)
-    df_all = pd.concat([df, exp], ignore_index=True)
-    df_all.to_csv(os.path.join(OUT, "trajectories.csv"), index=False)
+    cond = weighted(df, conditional_weights(), "probability_weighted",
+                    "Probability-weighted, conditional on the premise (five modeled states)")
+    allin = weighted(df, all_in_weights(), "all_in_weighted",
+                     f"All-in: premise wrong {100 * P_PREMISE_WRONG:.0f}% (loom) + essay posteriors")
+    pd.concat([df, cond, allin], ignore_index=True).to_csv(os.path.join(OUT, "trajectories.csv"), index=False)
     with open(os.path.join(OUT, "params.json"), "w") as fh:
-        json.dump([asdict(p) for p in SCENARIOS], fh, indent=2)
+        json.dump({"P_PREMISE_WRONG": P_PREMISE_WRONG, "all_in_weights": all_in_weights(),
+                   "mc_ranges": MC_RANGES, "loom_ranges": LOOM_RANGES,
+                   "scenarios": [asdict(p) for p in SCENARIOS]}, fh, indent=2)
 
-    md = ["# Two-economy model: results\n",
-          "Generated by `two_economy.py`. Illustrative, not a forecast; see MODEL.md for assumptions.\n"]
-    md.append("\n## Scenarios\n")
+    md = ["# Two-economy model: results (central parameters)\n",
+          "Generated by `two_economy.py`. Illustrative, not a forecast; see MODEL.md for assumptions and "
+          "`uncertainty.md` for how much these numbers move when the shared parameters are varied.\n",
+          "\n## Scenarios\n"]
     for p in SCENARIOS:
         md.append(f"- **{p.name}** — {p.description}")
     md.append(summary_tables(df))
     md.append(household_tables(df))
-    md.append(expectation_table(df, exp))
+    md.append(drawdown_tables(df))
+    md.append("\n### Point expectations (central parameters)\n")
+    md.append("| Measure | All-in 2031 | All-in 2036 | All-in 2040 | Conditional 2036 | Loom 2036 |")
+    md.append("|---|---|---|---|---|---|")
+    loom = df[df.scenario == "loom"].set_index("year")
+    for m in MC_MEASURES:
+        md.append(f"| {LABELS[m]} | " + " | ".join(fmt(m, allin[allin.year == yr][m].iloc[0]) for yr in (2031, 2036, 2040))
+                  + f" | {fmt(m, cond[cond.year == 2036][m].iloc[0])} | {fmt(m, loom.loc[2036, m])} |")
     with open(os.path.join(OUT, "results.md"), "w") as fh:
         fh.write("\n".join(md) + "\n")
     print("\n".join(md))
+
+    if not fast:
+        u = monte_carlo()
+        u.to_csv(os.path.join(OUT, "uncertainty.csv"), index=False)
+        text = uncertainty_tables(u)
+        with open(os.path.join(OUT, "uncertainty.md"), "w") as fh:
+            fh.write(text + "\n")
+        print(text)
 
 
 if __name__ == "__main__":
