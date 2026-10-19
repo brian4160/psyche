@@ -7,6 +7,7 @@ Working folder for the family-facing companion to *Not the Loom* (October 2026):
 | File | What it is |
 |---|---|
 | `family-essay.md` | **The deliverable.** The letter to the family: mechanism, the two economies, seven endings with all-in odds (including the chance the premise is wrong), how sure any of it is, what each actor will say, the game among them, what it means by life stage with each move written as insurance, an if-then playbook, a section on how fast the technology spreads, signals to watch, caveats, sources. |
+| `for-dad.md`, `for-dad.pdf` | A five-page paper for the author's father covering the endings and the game between the players, with a brief note on what it means for a retiree. The PDF is rendered from the markdown by `build-pdf.sh` (pandoc + headless Chromium, Letter, 11.5-point serif; `paper.css` holds the print styles). |
 | `what-you-will-hear.md` | Appendix C. For each major actor: the public line with sources, the incentives behind it, how to read it, and a translation table. |
 | `model/two_economy.py` | Appendix A. The illustrative two-economy simulation, 2026–2040, with a premise-wrong probability, a Monte Carlo over the shared parameters, and a retiree drawdown module. |
 | `model/MODEL.md` | Assumptions, calibration anchors, the Monte Carlo and how its ranges relate to the essay's central case, headline results with ranges, limits. |
