@@ -6,3 +6,4 @@ dist/
 logs/
 eval_results/
 test_reply_models.py
+essays/**/build/
