@@ -319,7 +319,7 @@ STRATEGIES = {
     "Wages + some broad capital exposure + buffer": {"MD": 7, "DF": 6, "CR": 6, "CD": 6, "PD": 3, "AC": 4},
     "Concentrated bet on AI leaders": {"MD": 9, "DF": 5, "CR": 4, "CD": 2, "PD": 1, "AC": 2},
     "Concentrated bet against AI (cash, no equities)": {"MD": 2, "DF": 4, "CR": 4, "CD": 4, "PD": 5, "AC": 4},
-    "Family pooling: shared buffer, shared housing option, shared information": {"MD": 7, "DF": 7, "CR": 7, "CD": 7, "PD": 5, "AC": 5},
+    "Own buffer + some broad capital + housing-only backstop from a relative (no subsidy)": {"MD": 7, "DF": 6, "CR": 7, "CD": 6, "PD": 5, "AC": 5},
 }
 
 
@@ -348,9 +348,10 @@ def household_section() -> str:
     lines.append(
         "The point is not the exact scores. It is the shape: strategies that spread a household across the two "
         "economies (some wage income that is hard to substitute, some ownership of the capital side, a buffer, and "
-        "a family that pools) are never the best in any single state and never the worst in any, which is what you "
-        "want when you cannot know which state arrives. Concentrated bets in either direction are the best in one "
-        "state and the worst in others.")
+        "a clearly bounded backstop against losing the roof) are never the best in any single state and never the "
+        "worst in any, which is what you want when you cannot know which state arrives. The backstop raises the "
+        "worst case without changing the household's incentives, which a subsidy or a pooled fund would. Concentrated "
+        "bets in either direction are the best in one state and the worst in others.")
     return "\n".join(lines)
 
 

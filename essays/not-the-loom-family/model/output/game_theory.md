@@ -145,8 +145,8 @@ Scores are 0–10 judgments of how well a household following each strategy fare
 | Wages + some broad capital exposure + buffer | 7 | 6 | 6 | 6 | 3 | 4 | 5.9 | 3 | 2 |
 | Concentrated bet on AI leaders | 9 | 5 | 4 | 2 | 1 | 2 | 5.3 | 1 | 5 |
 | Concentrated bet against AI (cash, no equities) | 2 | 4 | 4 | 4 | 5 | 4 | 3.4 | 2 | 7 |
-| Family pooling: shared buffer, shared housing option, shared information | 7 | 7 | 7 | 7 | 5 | 5 | 6.6 | 5 | 2 |
+| Own buffer + some broad capital + housing-only backstop from a relative (no subsidy) | 7 | 6 | 7 | 6 | 5 | 5 | 6.3 | 5 | 2 |
 
-Minimax-regret strategies (max regret 2): **Wages + some broad capital exposure + buffer**; **Family pooling: shared buffer, shared housing option, shared information**. Highest expected score: **Family pooling: shared buffer, shared housing option, shared information** (6.6).
+Minimax-regret strategies (max regret 2): **Wages + some broad capital exposure + buffer**; **Own buffer + some broad capital + housing-only backstop from a relative (no subsidy)**. Highest expected score: **Own buffer + some broad capital + housing-only backstop from a relative (no subsidy)** (6.3).
 
-The point is not the exact scores. It is the shape: strategies that spread a household across the two economies (some wage income that is hard to substitute, some ownership of the capital side, a buffer, and a family that pools) are never the best in any single state and never the worst in any, which is what you want when you cannot know which state arrives. Concentrated bets in either direction are the best in one state and the worst in others.
+The point is not the exact scores. It is the shape: strategies that spread a household across the two economies (some wage income that is hard to substitute, some ownership of the capital side, a buffer, and a clearly bounded backstop against losing the roof) are never the best in any single state and never the worst in any, which is what you want when you cannot know which state arrives. The backstop raises the worst case without changing the household's incentives, which a subsidy or a pooled fund would. Concentrated bets in either direction are the best in one state and the worst in others.
