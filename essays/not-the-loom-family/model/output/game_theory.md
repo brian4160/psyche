@@ -24,18 +24,18 @@ Probability-weighted expected score (essay posteriors), by player:
 
 | Player | Expected score | Best state | Worst state |
 |---|---|---|---|
-| Frontier AI labs | 5.9 | Managed dependency | AI as independent agent class |
-| Chip and compute suppliers | 6.9 | Managed dependency | Prolonged disorder |
-| Hyperscalers / deployers | 6.1 | Managed dependency | Prolonged disorder |
-| Federal executive (as an institution) | 5.7 | Managed dependency | Prolonged disorder |
-| Congress (median member) | 4.9 | Compensated restructuring | Prolonged disorder |
-| States (California, Massachusetts) | 4.9 | Durable fragmentation | Prolonged disorder |
-| Incumbent enterprises (adopters) | 6.2 | Managed dependency | Prolonged disorder |
-| Broad capital owners (index funds, pensions, retirees) | 5.2 | Managed dependency | Prolonged disorder |
-| Cognitive professionals (displaced labor economy) | 3.9 | Compensated restructuring | Prolonged disorder |
-| Physical and presence workers | 4.6 | Compensated restructuring | Prolonged disorder |
+| Frontier AI labs | 6.1 | Managed dependency | AI as independent agent class |
+| Chip and compute suppliers | 7.1 | Managed dependency | Prolonged disorder |
+| Hyperscalers / deployers | 6.3 | Managed dependency | Prolonged disorder |
+| Federal executive (as an institution) | 6.0 | Managed dependency | Prolonged disorder |
+| Congress (median member) | 5.1 | Compensated restructuring | Prolonged disorder |
+| States (California, Massachusetts) | 5.0 | Durable fragmentation | Prolonged disorder |
+| Incumbent enterprises (adopters) | 6.4 | Managed dependency | Prolonged disorder |
+| Broad capital owners (index funds, pensions, retirees) | 5.4 | Managed dependency | Prolonged disorder |
+| Cognitive professionals (displaced labor economy) | 4.0 | Compensated restructuring | Prolonged disorder |
+| Physical and presence workers | 4.7 | Compensated restructuring | Prolonged disorder |
 | Chinese state | 5.5 | Capability diffusion | AI as independent agent class |
-| Universities and licensing bodies | 3.8 | Compensated restructuring | Prolonged disorder |
+| Universities and licensing bodies | 3.9 | Compensated restructuring | Prolonged disorder |
 
 Rationales (one line each):
 
@@ -139,14 +139,13 @@ Scores are 0–10 judgments of how well a household following each strategy fare
 
 | Strategy | MD | DF | CR | CD | PD | AC | Expected (essay weights) | Worst case | Max regret |
 |---|---|---|---|---|---|---|---|---|---|
-| Labor-only, exposed cognitive work, no buffer | 3 | 4 | 6 | 5 | 1 | 3 | 3.6 | 1 | 6 |
+| Labor-only, exposed cognitive work, no buffer | 3 | 4 | 6 | 5 | 1 | 3 | 3.7 | 1 | 6 |
 | Labor-only, presence or licensed work | 5 | 6 | 7 | 6 | 2 | 4 | 5.2 | 2 | 4 |
-| Cognitive work + deploy the tools + cash buffer | 5 | 6 | 7 | 7 | 3 | 4 | 5.4 | 3 | 4 |
-| Wages + some broad capital exposure + buffer | 7 | 6 | 6 | 6 | 3 | 4 | 5.9 | 3 | 2 |
-| Concentrated bet on AI leaders | 9 | 5 | 4 | 2 | 1 | 2 | 5.3 | 1 | 5 |
-| Concentrated bet against AI (cash, no equities) | 2 | 4 | 4 | 4 | 5 | 4 | 3.4 | 2 | 7 |
-| Own buffer + some broad capital + housing-only backstop from a relative (no subsidy) | 7 | 6 | 7 | 6 | 5 | 5 | 6.3 | 5 | 2 |
+| Cognitive work + deploy the tools + cash buffer | 5 | 6 | 7 | 7 | 3 | 4 | 5.5 | 3 | 4 |
+| Wages + some broad capital exposure + buffer | 7 | 6 | 6 | 6 | 3 | 4 | 6.0 | 3 | 2 |
+| Concentrated bet on AI leaders | 9 | 5 | 4 | 2 | 1 | 2 | 5.6 | 1 | 5 |
+| Concentrated bet against AI (cash, no equities) | 2 | 4 | 4 | 4 | 5 | 4 | 3.3 | 2 | 7 |
 
-Minimax-regret strategies (max regret 2): **Wages + some broad capital exposure + buffer**; **Own buffer + some broad capital + housing-only backstop from a relative (no subsidy)**. Highest expected score: **Own buffer + some broad capital + housing-only backstop from a relative (no subsidy)** (6.3).
+Minimax-regret strategies (max regret 2): **Wages + some broad capital exposure + buffer**. Highest expected score: **Wages + some broad capital exposure + buffer** (6.0).
 
-The point is not the exact scores. It is the shape: strategies that spread a household across the two economies (some wage income that is hard to substitute, some ownership of the capital side, a buffer, and a clearly bounded backstop against losing the roof) are never the best in any single state and never the worst in any, which is what you want when you cannot know which state arrives. The backstop raises the worst case without changing the household's incentives, which a subsidy or a pooled fund would. Concentrated bets in either direction are the best in one state and the worst in others.
+The point is not the exact scores. It is the shape: strategies that spread a household across the two economies (some wage income that is hard to substitute, some ownership of the capital side, and a buffer) are never the best in any single state and never the worst in any, which is what you want when you cannot know which state arrives. Concentrated bets in either direction are the best in one state and the worst in others.

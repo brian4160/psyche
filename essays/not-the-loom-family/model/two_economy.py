@@ -55,12 +55,12 @@ YEARS = list(range(2026, 2041))
 # essay's premise (a general substitute arrives within 10 to 15 years). The wildcard
 # (AI as an independent agent class, 8%) is not modeled numerically; the five modeled
 # states are renormalized.
-ESSAY_POSTERIOR = {
-    "managed_dependency": 0.37,
+ESSAY_POSTERIOR = {   # rounded to multiples of five; the wildcard (5%) is not modeled
+    "managed_dependency": 0.40,
     "durable_fragmentation": 0.20,
-    "compensated_restructuring": 0.13,
-    "capability_diffusion": 0.11,
-    "prolonged_disorder": 0.11,
+    "compensated_restructuring": 0.15,
+    "capability_diffusion": 0.10,
+    "prolonged_disorder": 0.10,
 }
 # The letter author's judgment that the premise is wrong and the standard precedent holds
 # (capability plateaus; new tasks absorb displaced labor). Represented by the loom comparator.

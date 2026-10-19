@@ -1,53 +1,53 @@
 # Uncertainty: Monte Carlo over the shared parameters
 
-Each draw samples the technology and labor-market parameters from the judgment ranges in `MC_RANGES` (the comparator from `LOOM_RANGES`), keeps each scenario's offsets, runs all six scenarios, and forms the probability-weighted mixture. Weights (all-in): managed_dependency 30%, durable_fragmentation 16%, compensated_restructuring 11%, capability_diffusion 9%, prolonged_disorder 9%, loom 25%. P(premise wrong) = 25%.
+Each draw samples the technology and labor-market parameters from the judgment ranges in `MC_RANGES` (the comparator from `LOOM_RANGES`), keeps each scenario's offsets, runs all six scenarios, and forms the probability-weighted mixture. Weights (all-in): managed_dependency 32%, durable_fragmentation 16%, compensated_restructuring 12%, capability_diffusion 8%, prolonged_disorder 8%, loom 25%. P(premise wrong) = 25%.
 
 
 ## All-in expectation: 10th / 50th / 90th percentile across draws
 
 | Measure | 2031 | 2036 | 2040 |
 |---|---|---|---|
-| Real cognitive wage (index) | 96 (87 to 102) | 85 (68 to 98) | 78 (66 to 94) |
+| Real cognitive wage (index) | 96 (87 to 102) | 85 (68 to 98) | 78 (66 to 93) |
 | Real presence wage (index) | 115 (112 to 119) | 127 (116 to 135) | 126 (111 to 140) |
 | Not employed, share of workforce | 5% (5% to 6%) | 6% (5% to 8%) | 7% (5% to 11%) |
-| Dependency ratio | 28% (26% to 30%) | 34% (30% to 40%) | 40% (34% to 46%) |
-| Real household income, all households (index) | 108 (106 to 110) | 118 (113 to 122) | 126 (120 to 131) |
-| Labor share of output | 53% (51% to 55%) | 47% (42% to 52%) | 42% (36% to 48%) |
-| Output (index) | 112 (110 to 114) | 125 (121 to 130) | 137 (133 to 143) |
-| Broad equity, real (index) | 117 (107 to 123) | 125 (115 to 137) | 141 (128 to 156) |
-| 60/40 portfolio, total return, real (index) | 126 (119 to 131) | 153 (141 to 167) | 188 (168 to 210) |
-| Retired couple income (index) | 114 (111 to 117) | 127 (121 to 134) | 145 (135 to 157) |
-| Incumbent professional who keeps the job, real pay (index) | 102 (98 to 106) | 92 (79 to 104) | 84 (73 to 99) |
+| Dependency ratio | 28% (26% to 30%) | 34% (30% to 40%) | 40% (34% to 47%) |
+| Real household income, all households (index) | 108 (106 to 110) | 118 (113 to 122) | 126 (120 to 132) |
+| Labor share of output | 53% (51% to 55%) | 47% (42% to 52%) | 42% (36% to 47%) |
+| Output (index) | 112 (110 to 114) | 125 (121 to 130) | 138 (133 to 144) |
+| Broad equity, real (index) | 117 (108 to 123) | 127 (116 to 139) | 143 (130 to 158) |
+| 60/40 portfolio, total return, real (index) | 126 (119 to 131) | 154 (143 to 168) | 189 (170 to 211) |
+| Retired couple income (index) | 114 (111 to 117) | 127 (122 to 135) | 146 (136 to 157) |
+| Incumbent professional who keeps the job, real pay (index) | 102 (97 to 106) | 92 (79 to 104) | 84 (72 to 99) |
 | P(incumbent involuntary exit by year) | 16% (12% to 22%) | 35% (28% to 45%) | 45% (37% to 54%) |
-| New graduate opportunity (openings x pay, index) | 86 (75 to 94) | 68 (52 to 83) | 59 (47 to 76) |
+| New graduate opportunity (openings x pay, index) | 86 (75 to 94) | 67 (52 to 83) | 59 (47 to 75) |
 | Licensed presence profession, real pay (index) | 110 (106 to 114) | 120 (112 to 128) | 130 (120 to 143) |
-| Infrastructure engineer, real pay (index) | 127 (120 to 135) | 141 (133 to 149) | 155 (146 to 164) |
-| Retiree savings, all equity, 4% real withdrawals (start 100) | 113 (104 to 121) | 122 (107 to 140) | 139 (116 to 166) |
-| Retiree savings, 60/40, 4% real withdrawals (start 100) | 102 (97 to 106) | 100 (93 to 110) | 103 (92 to 116) |
-| Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100) | 109 (101 to 116) | 115 (102 to 131) | 128 (107 to 152) |
+| Infrastructure engineer, real pay (index) | 127 (120 to 135) | 141 (133 to 149) | 156 (146 to 164) |
+| Retiree savings, all equity, 4% real withdrawals (start 100) | 114 (105 to 121) | 123 (108 to 141) | 141 (117 to 168) |
+| Retiree savings, 60/40, 4% real withdrawals (start 100) | 102 (97 to 106) | 101 (94 to 111) | 104 (93 to 117) |
+| Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100) | 110 (102 to 116) | 116 (103 to 132) | 129 (108 to 154) |
 
 ## Conditional on the premise (the essay's five states only): median and 10th to 90th percentile
 
 | Measure | 2031 | 2036 | 2040 |
 |---|---|---|---|
 | Real cognitive wage (index) | 92 (81 to 99) | 75 (54 to 92) | 64 (49 to 84) |
-| Real presence wage (index) | 114 (111 to 118) | 124 (110 to 134) | 119 (100 to 137) |
+| Real presence wage (index) | 114 (111 to 118) | 124 (110 to 134) | 119 (99 to 137) |
 | Not employed, share of workforce | 5% (5% to 6%) | 7% (6% to 9%) | 7% (6% to 13%) |
-| Dependency ratio | 29% (27% to 32%) | 37% (31% to 45%) | 45% (37% to 54%) |
-| Real household income, all households (index) | 106 (104 to 109) | 115 (109 to 119) | 122 (115 to 129) |
-| Labor share of output | 52% (49% to 54%) | 44% (37% to 50%) | 37% (29% to 44%) |
-| Output (index) | 112 (109 to 114) | 124 (120 to 130) | 138 (133 to 144) |
-| Broad equity, real (index) | 119 (107 to 127) | 129 (115 to 143) | 148 (132 to 166) |
-| 60/40 portfolio, total return, real (index) | 128 (119 to 134) | 155 (142 to 170) | 194 (173 to 219) |
-| Retired couple income (index) | 115 (111 to 118) | 127 (121 to 136) | 147 (137 to 161) |
-| Incumbent professional who keeps the job, real pay (index) | 100 (94 to 104) | 84 (67 to 99) | 71 (57 to 91) |
+| Dependency ratio | 29% (27% to 32%) | 37% (32% to 45%) | 45% (38% to 54%) |
+| Real household income, all households (index) | 107 (104 to 109) | 115 (110 to 119) | 122 (116 to 129) |
+| Labor share of output | 51% (49% to 54%) | 44% (37% to 50%) | 37% (29% to 43%) |
+| Output (index) | 112 (109 to 114) | 125 (121 to 131) | 139 (133 to 145) |
+| Broad equity, real (index) | 120 (108 to 128) | 131 (116 to 145) | 150 (134 to 168) |
+| 60/40 portfolio, total return, real (index) | 128 (119 to 134) | 157 (143 to 172) | 195 (174 to 221) |
+| Retired couple income (index) | 115 (111 to 118) | 128 (121 to 137) | 148 (138 to 162) |
+| Incumbent professional who keeps the job, real pay (index) | 100 (94 to 104) | 84 (67 to 98) | 71 (57 to 90) |
 | P(incumbent involuntary exit by year) | 17% (13% to 25%) | 39% (31% to 52%) | 51% (41% to 62%) |
-| New graduate opportunity (openings x pay, index) | 82 (69 to 92) | 57 (38 to 76) | 44 (30 to 65) |
-| Licensed presence profession, real pay (index) | 109 (105 to 114) | 118 (109 to 128) | 128 (116 to 142) |
-| Infrastructure engineer, real pay (index) | 127 (120 to 135) | 140 (132 to 148) | 154 (144 to 163) |
-| Retiree savings, all equity, 4% real withdrawals (start 100) | 116 (104 to 125) | 125 (109 to 145) | 147 (122 to 178) |
-| Retiree savings, 60/40, 4% real withdrawals (start 100) | 104 (97 to 108) | 103 (94 to 113) | 107 (95 to 122) |
-| Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100) | 112 (101 to 119) | 118 (104 to 136) | 135 (113 to 165) |
+| New graduate opportunity (openings x pay, index) | 82 (68 to 92) | 57 (38 to 76) | 44 (30 to 65) |
+| Licensed presence profession, real pay (index) | 109 (105 to 113) | 119 (109 to 128) | 128 (116 to 142) |
+| Infrastructure engineer, real pay (index) | 127 (120 to 134) | 140 (131 to 148) | 155 (145 to 164) |
+| Retiree savings, all equity, 4% real withdrawals (start 100) | 117 (105 to 126) | 127 (110 to 148) | 149 (125 to 181) |
+| Retiree savings, 60/40, 4% real withdrawals (start 100) | 104 (97 to 109) | 104 (95 to 114) | 108 (96 to 123) |
+| Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100) | 112 (102 to 120) | 120 (105 to 138) | 137 (115 to 167) |
 
 ## By scenario, 2036: median (10th to 90th percentile)
 

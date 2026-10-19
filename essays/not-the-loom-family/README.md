@@ -6,7 +6,7 @@ Working folder for the family-facing companion to *Not the Loom* (October 2026):
 
 | File | What it is |
 |---|---|
-| `family-essay.md` | **The deliverable.** The letter to the family: mechanism, the two economies, seven endings with all-in odds (including the chance the premise is wrong), how sure any of it is, what each actor will say, the game among them, what it means by life stage with each move written as insurance, an if-then playbook, the family backstop stated precisely (a roof, no subsidy, no pooling), signals to watch, caveats, sources. |
+| `family-essay.md` | **The deliverable.** The letter to the family: mechanism, the two economies, seven endings with all-in odds (including the chance the premise is wrong), how sure any of it is, what each actor will say, the game among them, what it means by life stage with each move written as insurance, an if-then playbook, a section on how fast the technology spreads, signals to watch, caveats, sources. |
 | `what-you-will-hear.md` | Appendix C. For each major actor: the public line with sources, the incentives behind it, how to read it, and a translation table. |
 | `model/two_economy.py` | Appendix A. The illustrative two-economy simulation, 2026–2040, with a premise-wrong probability, a Monte Carlo over the shared parameters, and a retiree drawdown module. |
 | `model/MODEL.md` | Assumptions, calibration anchors, the Monte Carlo and how its ranges relate to the essay's central case, headline results with ranges, limits. |
@@ -41,16 +41,16 @@ The environment the assistant worked in could reach web search results but not t
 | Hyperscaler AI capital spending $650–725B in 2026; top-10 S&P weight 36–40% | Company filings; S&P Dow Jones Indices |
 | CS undergraduate enrollment −8.1% fall 2025; AI-exposed majors' starting pay −13%; up to 80 college closures by 2030 | National Student Clearinghouse; Census Bureau working paper; Philadelphia Fed |
 | California SB 947 signed September 30, 2026 (automated decisions in discipline and termination) | leginfo.legislature.ca.gov; Governor's press release |
+| Diffusion figures: open-weight lag 3–4 months (Epoch, May 2026); prices for a fixed capability falling 10–40x a year; 28%→39% of workers using generative AI at work (St. Louis Fed tracker); ~20% of firms, ~32% of employment (Census BTOS AI supplement); pilot-to-production 12–31% (vendor and analyst surveys); humanoid shipments ~15k (2025) and bank forecasts | epoch.ai data insights; fred.stlouisfed.org tracker and the NBER paper; census.gov BTOS; the bank reports; the survey primaries |
 
 ## Editorial notes for the author
 
 - **Voice and personal detail.** The letter is in your voice and refers to life stages rather than people. Add names and anything you know that changes a section. The retiree numbers assume a 55/45 split between Social Security and portfolio draw; the drawdown table assumes a 4% real withdrawal rate and shows all-stock, 60/40, and bucket strategies. If the actual withdrawal rate or allocation differs much, rerun the model with `WITHDRAWAL` changed.
 - **The premise-wrong probability (25%)** is the assistant's suggestion written in your voice. If you would put it elsewhere, change `P_PREMISE_WRONG` in `two_economy.py`, rerun, and update the odds table and the "short version" bullet in the letter.
 - **The Monte Carlo ranges** are the assistant's judgments and are centered milder than your central case; the letter says so in "How sure am I?". If you want the bands centered on your central assumptions, narrow or shift `MC_RANGES`.
-- **The backstop.** The letter states, in your voice and without figures, that the one commitment is a room if anyone loses their housing, and that there is no pooling and no subsidy. Adjust the wording if you want it softer or firmer; the household strategy table in `game_theory.py` is scored on that basis.
 - **The analogy.** The slave-economy comparison is kept, with the "structural, not moral" caveat, in one paragraph plus the psychological-wage idea. Decide whether that is the right dose for this audience.
 - **The harsher numbers** (roughly two in five chance of an involuntary job change by 2036 for a mid-career professional in exposed work if the premise holds; a new-graduate index around 67 in 2034) are now ranges with the old-pattern comparison beside them. Soften further if they read as alarmist for the people involved.
-- **Odds.** The scenario table uses the long essay's posteriors scaled by 0.75. If those move, update `ESSAY_POSTERIOR` in `two_economy.py` and `SCENARIOS` in `game_theory.py` and the letter's table.
+- **Odds.** The letter rounds every judgment probability to a multiple of five: 25% on the premise being wrong, and 40/20/15/10/10/5 for the endings if it holds. `ESSAY_POSTERIOR` in `two_economy.py` and `SCENARIOS` in `game_theory.py` carry the same rounded values. If they move, update all three.
 
 ## Not done, and worth doing
 

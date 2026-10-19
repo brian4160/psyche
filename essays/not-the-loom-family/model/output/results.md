@@ -76,20 +76,20 @@ All equity: everything in the broad equity index. 60/40: rebalanced yearly. Buck
 | Measure | All-in 2031 | All-in 2036 | All-in 2040 | Conditional 2036 | Loom 2036 |
 |---|---|---|---|---|---|
 | Real cognitive wage (index) | 92 | 74 | 69 | 59 | 117 |
-| Real presence wage (index) | 115 | 123 | 114 | 117 | 138 |
+| Real presence wage (index) | 115 | 122 | 114 | 117 | 138 |
 | Not employed, share of workforce | 6% | 7% | 9% | 8% | 4% |
-| Dependency ratio | 29% | 39% | 46% | 43% | 24% |
-| Real household income, all households (index) | 107 | 116 | 123 | 112 | 128 |
+| Dependency ratio | 29% | 39% | 46% | 44% | 24% |
+| Real household income, all households (index) | 107 | 116 | 124 | 112 | 128 |
 | Labor share of output | 52% | 43% | 37% | 38% | 58% |
-| Output (index) | 111 | 127 | 140 | 127 | 127 |
-| Broad equity, real (index) | 111 | 134 | 152 | 140 | 116 |
-| 60/40 portfolio, total return, real (index) | 122 | 161 | 198 | 166 | 145 |
-| Retired couple income (index) | 113 | 132 | 152 | 133 | 126 |
+| Output (index) | 111 | 128 | 141 | 128 | 127 |
+| Broad equity, real (index) | 111 | 136 | 154 | 143 | 116 |
+| 60/40 portfolio, total return, real (index) | 122 | 162 | 200 | 167 | 145 |
+| Retired couple income (index) | 113 | 132 | 152 | 134 | 126 |
 | Incumbent professional who keeps the job, real pay (index) | 100 | 83 | 75 | 71 | 118 |
 | P(incumbent involuntary exit by year) | 20% | 41% | 49% | 47% | 20% |
 | New graduate opportunity (openings x pay, index) | 81 | 57 | 51 | 43 | 100 |
 | Licensed presence profession, real pay (index) | 109 | 119 | 130 | 117 | 125 |
 | Infrastructure engineer, real pay (index) | 126 | 142 | 158 | 141 | 146 |
-| Retiree savings, all equity, 4% real withdrawals (start 100) | 108 | 131 | 152 | 138 | 111 |
-| Retiree savings, 60/40, 4% real withdrawals (start 100) | 99 | 105 | 109 | 109 | 94 |
-| Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100) | 105 | 123 | 139 | 129 | 104 |
+| Retiree savings, all equity, 4% real withdrawals (start 100) | 109 | 133 | 154 | 140 | 111 |
+| Retiree savings, 60/40, 4% real withdrawals (start 100) | 100 | 106 | 110 | 110 | 94 |
+| Retiree savings, equity + 3-year cash bucket, 4% real withdrawals (start 100) | 105 | 124 | 140 | 131 | 104 |

@@ -1,11 +1,11 @@
 {
   "P_PREMISE_WRONG": 0.25,
   "all_in_weights": {
-    "managed_dependency": 0.30163043478260865,
-    "durable_fragmentation": 0.1630434782608696,
-    "compensated_restructuring": 0.10597826086956522,
-    "capability_diffusion": 0.08967391304347826,
-    "prolonged_disorder": 0.08967391304347826,
+    "managed_dependency": 0.31578947368421056,
+    "durable_fragmentation": 0.15789473684210528,
+    "compensated_restructuring": 0.11842105263157893,
+    "capability_diffusion": 0.07894736842105264,
+    "prolonged_disorder": 0.07894736842105264,
     "loom": 0.25
   },
   "mc_ranges": {

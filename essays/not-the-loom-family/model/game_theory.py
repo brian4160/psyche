@@ -26,13 +26,13 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "output")
 
-SCENARIOS = {
-    "MD": ("Managed dependency", 0.37),
+SCENARIOS = {   # odds conditional on the essay's premise, rounded to multiples of five
+    "MD": ("Managed dependency", 0.40),
     "DF": ("Durable fragmentation", 0.20),
-    "CR": ("Compensated restructuring", 0.13),
-    "CD": ("Capability diffusion", 0.11),
-    "PD": ("Prolonged disorder", 0.11),
-    "AC": ("AI as independent agent class", 0.08),
+    "CR": ("Compensated restructuring", 0.15),
+    "CD": ("Capability diffusion", 0.10),
+    "PD": ("Prolonged disorder", 0.10),
+    "AC": ("AI as independent agent class", 0.05),
 }
 
 # ---------------------------------------------------------------------------------------
@@ -319,7 +319,6 @@ STRATEGIES = {
     "Wages + some broad capital exposure + buffer": {"MD": 7, "DF": 6, "CR": 6, "CD": 6, "PD": 3, "AC": 4},
     "Concentrated bet on AI leaders": {"MD": 9, "DF": 5, "CR": 4, "CD": 2, "PD": 1, "AC": 2},
     "Concentrated bet against AI (cash, no equities)": {"MD": 2, "DF": 4, "CR": 4, "CD": 4, "PD": 5, "AC": 4},
-    "Own buffer + some broad capital + housing-only backstop from a relative (no subsidy)": {"MD": 7, "DF": 6, "CR": 7, "CD": 6, "PD": 5, "AC": 5},
 }
 
 
@@ -347,11 +346,10 @@ def household_section() -> str:
     lines.append("")
     lines.append(
         "The point is not the exact scores. It is the shape: strategies that spread a household across the two "
-        "economies (some wage income that is hard to substitute, some ownership of the capital side, a buffer, and "
-        "a clearly bounded backstop against losing the roof) are never the best in any single state and never the "
-        "worst in any, which is what you want when you cannot know which state arrives. The backstop raises the "
-        "worst case without changing the household's incentives, which a subsidy or a pooled fund would. Concentrated "
-        "bets in either direction are the best in one state and the worst in others.")
+        "economies (some wage income that is hard to substitute, some ownership of the capital side, and a buffer) "
+        "are never the best in any single state and never the worst in any, which is what you want when you cannot "
+        "know which state arrives. Concentrated bets in either direction are the best in one state and the worst in "
+        "others.")
     return "\n".join(lines)
 
 

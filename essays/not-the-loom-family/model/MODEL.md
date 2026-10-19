@@ -14,8 +14,8 @@ The essay's six terminal states, and their posteriors, are conditional on its pr
 
 Two weightings are reported:
 
-- **Conditional**: the five modeled states renormalized over their posteriors (37, 20, 13, 11, 11; the 8% wildcard is not modeled). This is "if the premise holds".
-- **All-in**: the loom at 25% and the five states at 75% of their conditional weights (managed dependency 28%, fragmentation 15%, restructuring 10%, diffusion 8%, disorder 8%).
+- **Conditional**: the five modeled states renormalized over their posteriors, rounded to multiples of five (40, 20, 15, 10, 10; the 5% wildcard is not modeled). This is "if the premise holds".
+- **All-in**: the loom at 25% and the five states at 75% of their conditional weights (roughly managed dependency 30%, fragmentation 15%, restructuring 12%, diffusion 8%, disorder 8%).
 
 The all-in mixture is an expected value across two quite different worlds, so the letter reports the two worlds separately (the conditional band and the comparator line) and uses the all-in only for the odds table.
 
@@ -24,7 +24,7 @@ The all-in mixture is an expected value across two quite different worlds, so th
 The model runs in annual steps. Units: 2026 output = 100, 2026 jobs = 100, 2026 prices = 1.
 
 1. **Capability.** The share of cognitive tasks that frontier AI can do at acceptable quality follows a logistic curve anchored at 25% in 2026, passing 50% around 2031, approaching 85%. Physical and presence tasks (robotics) follow a slower curve: 5% in 2026, about 27% in 2036, 47% in 2040. The loom comparator caps cognitive capability at 45%.
-2. **Deployment.** Firms close the gap between what AI can do and what they have actually substituted at 30% a year (22% in the fragmentation scenario). Deployment therefore trails capability by two to three years, which is where the "it hasn't happened yet" observation comes from.
+2. **Deployment.** Firms close the gap between what AI can do and what they have actually substituted at 30% a year (22% in the fragmentation scenario; 15 to 40% in the Monte Carlo). Deployment therefore trails capability by two to three years, which is where the "it hasn't happened yet" observation comes from. The diffusion evidence is consistent with this: in 2026 about 20% of US firms (about a third of employment) use AI in some business function (Census BTOS), 39% of workers use it at work in a given week (St. Louis Fed), and surveys put the share of corporate pilots reaching production between one in eight and one in three; meanwhile the capability itself diffuses in months (Epoch: open-weight models 3 to 4 months behind the frontier) and the price of a fixed capability falls 10 to 40 times a year. Capability and price move far faster than firm reorganization, which is the model's central timing assumption.
 3. **New tasks.** Following Acemoglu and Restrepo, displaced tasks create new tasks (0.5 per displaced task). The share of those new tasks that humans perform is the key difference between the essay's world (20% in cognitive work, 35% in presence work) and the loom world (80%). Human task demand also rises with total output (elasticity 0.4), the "productivity effect" optimists rely on.
 4. **Two labor markets.** Cognitive jobs (42% of jobs, 57% of wages) and presence jobs (58% of jobs, 43% of wages). In each, the market-clearing wage falls when the pool of workers exceeds the tasks that remain human, with a labor demand elasticity of −0.7. Wages adjust halfway to the clearing level each year and cannot fall below a reservation floor at 45% of the trend average wage; when the floor binds, employment is rationed instead and the "not employed" share rises. A quarter of surplus cognitive workers move into presence work each year, which is why presence wages flatten and then fall in the substitution scenarios while they rise 50% in the loom world.
 5. **Trend growth.** Every base wage carries 1.5% a year of trend productivity growth, in every scenario, so a flat real-wage line already means falling behind.
@@ -70,19 +70,19 @@ Medians with 10th to 90th percentile ranges across draws. "If the premise holds"
 | Measure (2026 = 100 unless %) | Premise holds, 2031 | Premise holds, 2036 | Premise holds, 2040 | Old pattern, 2036 | All-in, 2036 |
 |---|---|---|---|---|---|
 | Real cognitive wage | 92 (81–99) | 75 (54–92) | 64 (49–84) | 115 (108–120) | 85 (68–98) |
-| Real presence wage | 114 (111–118) | 124 (110–134) | 119 (100–137) | 137 (132–140) | 127 (116–135) |
+| Real presence wage | 114 (111–118) | 124 (110–134) | 119 (99–137) | 137 (132–140) | 127 (116–135) |
 | Not employed, share of workforce | 5% (5–6) | 7% (6–9) | 7% (6–13) | 4% | 6% (5–8) |
-| Dependency ratio | 29% (27–32) | 37% (31–45) | 45% (37–54) | 24% | 34% (30–40) |
-| Real household income, all households | 106 (104–109) | 115 (109–119) | 122 (115–129) | 126 (122–130) | 118 (113–122) |
-| 60/40 portfolio, total return, real | 128 (119–134) | 155 (142–170) | 194 (173–219) | 146 (137–155) | 153 (141–167) |
-| Retired couple income | 115 (111–118) | 127 (121–136) | 147 (137–161) | 126 (121–131) | 127 (121–134) |
-| Incumbent professional who keeps the job, real pay | 100 (94–104) | 84 (67–99) | 71 (57–91) | 116 (111–121) | 92 (79–104) |
+| Dependency ratio | 29% (27–32) | 37% (32–45) | 45% (38–54) | 24% | 34% (30–40) |
+| Real household income, all households | 107 (104–109) | 115 (110–119) | 122 (116–129) | 126 (122–130) | 118 (113–122) |
+| 60/40 portfolio, total return, real | 128 (119–134) | 157 (143–172) | 195 (174–221) | 146 (137–155) | 154 (143–168) |
+| Retired couple income | 115 (111–118) | 128 (121–137) | 148 (138–162) | 126 (121–131) | 127 (122–135) |
+| Incumbent professional who keeps the job, real pay | 100 (94–104) | 84 (67–98) | 71 (57–90) | 116 (111–121) | 92 (79–104) |
 | P(incumbent involuntary exit by year) | 17% (13–25) | 39% (31–52) | 51% (41–62) | 21% (18–24) | 35% (28–45) |
-| New graduate opportunity (openings × pay) | 82 (69–92) | 57 (38–76) | 44 (30–65) | 99 (88–107) | 68 (52–83) |
-| Licensed presence profession, real pay | 109 (105–114) | 118 (109–128) | 128 (116–142) | 125 (120–131) | 120 (112–128) |
-| Infrastructure engineer, real pay | 127 (120–135) | 140 (132–148) | 154 (144–163) | 145 (137–153) | 141 (133–149) |
-| Retiree savings, all equity, 4% real withdrawals | 116 (104–125) | 125 (109–145) | 147 (122–178) | 112 (100–124) | 122 (107–140) |
-| Retiree savings, equity + 3-year cash bucket | 112 (101–119) | 118 (104–136) | 135 (113–165) | 104 (94–114) | 115 (102–131) |
+| New graduate opportunity (openings × pay) | 82 (68–92) | 57 (38–76) | 44 (30–65) | 99 (88–107) | 67 (52–83) |
+| Licensed presence profession, real pay | 109 (105–113) | 119 (109–128) | 128 (116–142) | 125 (120–131) | 120 (112–128) |
+| Infrastructure engineer, real pay | 127 (120–134) | 140 (131–148) | 155 (145–164) | 145 (137–153) | 141 (133–149) |
+| Retiree savings, all equity, 4% real withdrawals | 117 (105–126) | 127 (110–148) | 149 (125–181) | 112 (100–124) | 123 (108–141) |
+| Retiree savings, equity + 3-year cash bucket | 112 (102–120) | 120 (105–138) | 137 (115–167) | 104 (94–114) | 116 (103–132) |
 
 Crisis years in the central runs: compensated restructuring 2030, prolonged disorder 2030, capability diffusion 2033; managed dependency none (the dole arrives in time); durable fragmentation none (chronic shortfall instead). Equity price drawdowns from peak in the central runs: restructuring 45%, diffusion 42%, disorder 60%.
 
